@@ -1,4 +1,4 @@
-# Data Analysis Projects
+# Data Mining Projects
 
 Code for the data science projects featured on my [portfolio page](https://ynhi-ng.github.io/nhinguyen-ds-portfolio/).
 
