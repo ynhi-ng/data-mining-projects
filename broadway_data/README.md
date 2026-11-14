@@ -9,8 +9,15 @@ are included.
 
 ## Data & methodology
 - Clean weekly grosses: parse fields, fix closed weeks / missing financials /
-  bad ticket prices, filter to 2005–present
+  bad ticket prices, filter to 2005–present (`clean_data.R` → local `broadway_clean.csv`)
 - Shiny app: current-week snapshot, top-10 charts, leaderboard, trend explorer
+
+## Data (not in git)
+Place cleaned output locally as `broadway_clean.csv` after running `clean_data.R`.
+
+**Source:** Broadway League weekly box office grosses (public weekly reports),
+2005–present. Obtain the raw weekly table from public Broadway box-office
+archives / scrapers you use, then run the cleaning script.
 
 ## Limits & next steps
 - Public weekly aggregates; no ticket-level microdata
@@ -23,15 +30,14 @@ are included.
 Complete
 
 ## Files
-- `clean_data.R` — cleaning pipeline → `broadway_clean.csv`
-- `broadway_clean.csv` — cleaned dataset used by the app
+- `clean_data.R` — cleaning pipeline (writes local `broadway_clean.csv`)
 - `app.R` — Shiny dashboard
 
-## Data Sources
-- Broadway weekly box office grosses, 2005–2025 (public data)
+## Final visual
+Shiny dashboard (`app.R`) — snapshot, leaderboard, and trend explorer.
 
 ## Run locally
 ```r
-# from this directory
+# after broadway_clean.csv exists in this folder
 shiny::runApp()
 ```

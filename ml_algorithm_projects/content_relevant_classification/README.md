@@ -1,27 +1,29 @@
 # Content-Relevant Classification
 
 ## Summary
-Supervised classification of forum posts as content-relevant or not. Independent
-feature tables are joined to label tables on `Unique_ID`, cleaned for duplicates
-and missing labels, then prepared across train / validation / test splits.
+Supervised classification of forum posts as content-relevant or not. Feature and
+label tables are joined on `Unique_ID`, cleaned, and prepared across train /
+validation / test splits.
 
 ## Data & methodology
-- Input: paired CSV files (`forum_ind_*` features, `forum_dep_*` labels) for train,
-  validation, and test
-- Join on `Unique_ID`; drop duplicate IDs and rows with missing labels
-- Debug helpers check schema alignment and ID coverage before modeling
+- Join `forum_ind_*` (features) to `forum_dep_*` (labels) on `Unique_ID`
+- Drop duplicate IDs and missing labels; validate schema before modeling
+
+## Data (not in git)
+Keep train / validation / test CSV pairs locally.
+
+**Source:** Forum post feature/label splits from the classification task dataset
+(independent feature tables + dependent label tables). Add the challenge or course
+dataset link here when you publish it.
 
 ## Limits & next steps
-- Notebook focuses on data prep and validation; document final model metrics in
-  the portfolio write-up as you extend evaluation
-- Consider a short model-card section (features used, class balance, metrics)
+- Document final model metrics in a short model card as you extend evaluation
 
 ## Tools
-- R (notebook), base data wrangling
+- R (notebook)
 
 ## Status
-Complete (analysis / pipeline work)
+Complete
 
 ## Files
-- `classification.ipynb` — load, debug, merge, and prepare splits
-- `forum_ind_*.csv` / `forum_dep_*.csv` — feature and label tables
+- `classification.ipynb` — load, debug, merge, prepare splits

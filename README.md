@@ -18,3 +18,8 @@ Code for the data science projects featured on my
 | [Melbourne Pedestrian Traffic](melbourne_peds_traffic/) | API ingest + quality checks for hourly foot traffic | Python, pandas | In progress |
 
 Each project folder has its own README with data sources, methods, and findings.
+
+**Data policy:** raw and cleaned tables (CSV/XLSX/parquet) are **not** tracked in
+git. Download or regenerate them locally and follow the **Data (not in git)** /
+citation notes in each project README. Small JS aggregates that power static HTML
+reports (e.g. `ecommerce/data.js`) may stay in the repo.

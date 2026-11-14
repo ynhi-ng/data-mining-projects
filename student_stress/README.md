@@ -2,37 +2,35 @@
 
 ## Summary
 Exploratory and statistical analysis of student stress survey data — distributions,
-correlations with mental stress level, group comparisons (gender, coping mechanisms),
-stress categories, and association rules linking stress factors to coping strategies.
-Companion notebooks cover a UK student survey dataset.
+correlations with mental stress level, group comparisons, stress categories, and
+association rules. Companion UK survey notebooks included. Interactive dashboard
+ships as static HTML (+ optional Shiny).
 
 ## Data & methodology
-- Primary survey tables (`student_stress*.xlsx` / `.csv`) and UK survey workbook
-- EDA: outliers, categorical profiles, correlation with `mental_stress_level`
-- Inferential tests: t-test (gender), ANOVA + post-hoc (coping), category breakdowns
-- Association rules on stress-related itemsets → coping mechanisms
+- Survey EDA, correlations, t-tests / ANOVA, association rules
+- Dashboard reads local `student_stress.csv` (Shiny) or pre-baked `dashboard_data.js` (HTML)
+
+## Data (not in git)
+Keep survey tables locally (`student_stress.csv` / related `.xlsx`, UK survey workbook).
+
+**Source:** Student stress survey extracts used for coursework analysis (self-reported
+questionnaire items: study hours, sleep, coping, mental stress level, etc.). Cite your
+original survey provider or assignment dataset page if publicly available.
 
 ## Limits & next steps
-- Analysis complete in R Markdown; interactive dashboard shipped (`index.html` + optional Shiny `app.R`)
-- Survey is self-reported; associations are not causal
+- Self-reported; associations are not causal
+- HTML dashboard uses exported aggregates in `dashboard_data.js`
 
 ## Tools
-- R, R Markdown, tidyverse-style EDA, association-rule mining
-- HTML / Chart.js dashboard; optional Shiny (`app.R`)
+- R, R Markdown; HTML / Chart.js; optional Shiny (`app.R`)
 
 ## Status
 Complete
 
 ## Files
-- `student_stress.rmd` — main stress analysis report
-- `uk_student_survey.rmd`, `student_survey_ver2.rmd` — UK survey analyses
-- Survey Excel / CSV inputs in this folder
+- `student_stress.rmd`, `uk_student_survey.rmd`, `student_survey_ver2.rmd`
 - `index.html`, `style.css`, `dashboard_data.js` — static dashboard
-- `app.R` — Shiny companion with gender/coping filters
+- `app.R` — Shiny companion (needs local `student_stress.csv`)
 
-## View dashboard
-Open `index.html` in a browser, or run:
-```r
-shiny::runApp()
-```
-
+## Final visual
+Open `index.html` (or `shiny::runApp()`).

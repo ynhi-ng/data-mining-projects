@@ -20,8 +20,15 @@ venv/
 # Editor
 .vscode/
 
-# Large / local raw data (keep cleaned aggregates in git when intentional)
+# Data files — keep local; cite sources in each project README
+*.csv
+*.xlsx
+*.xls
 *.parquet
+*.tsv
+*.rds
+*.RData
 learnplatform_data/engagement_data/
-ml_algorithm_projects/kaggle_pred_challenge/pred_test_score/train.csv
-ml_algorithm_projects/kaggle_pred_challenge/pred_test_score/test.csv
+
+# Exception: small JS aggregates that power static HTML reports (not raw tables)
+!ecommerce/data.js

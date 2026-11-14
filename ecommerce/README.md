@@ -13,6 +13,12 @@ descriptions). Findings are published as a static, interactive report.
 - TF-IDF + cosine similarity recommender on product descriptions
 - Export aggregates to `data.js` for the Chart.js report
 
+## Data (not in git)
+Keep `e-commerce_data.csv` locally (see folder `.gitignore`).
+
+**Source:** Chen, D. (2015). Online Retail [Dataset]. UCI Machine Learning
+Repository. https://doi.org/10.24432/C5BW33
+
 ## Limits & next steps
 - Single retailer / one-year window; segments may not generalize
 - Static report is portfolio-ready; live personalization not in scope
@@ -26,9 +32,8 @@ Complete
 
 ## Files
 - `ecommerce_eda.ipynb` — cleaning, EDA, segmentation, recommender
-- `data.js` — chart data for the report
+- `data.js` — chart aggregates for the report (tracked)
 - `index.html`, `style.css`, `script.js` — interactive report
-- `e-commerce_data.csv` — raw data (not tracked; see `.gitignore`)
 
-## Data Sources
-- Chen, D. (2015). Online Retail [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5BW33.
+## Final visual
+Open `index.html` — “The Sales Report”.

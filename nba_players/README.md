@@ -6,15 +6,20 @@ overview of the player/season tables, and deeper analysis of performance pattern
 across careers and seasons.
 
 ## Data & methodology
-- `players.csv` — player biographical / career attributes
-- `seasons.csv` — season-by-season performance metrics
-- Notebook workflow: preparation & overview → analysis sections
-- Worked in Python (pandas / visualization stack in the notebook)
+- Player biographical / career attributes joined to season-by-season metrics
+- Notebook workflow: preparation & overview → analysis
+- Static HTML findings report summarizes headline stats and position mix
+
+## Data (not in git)
+Keep `players.csv` and `seasons.csv` locally for the notebook.
+
+**Source:** Historical NBA player and season statistics (commonly derived from
+Basketball-Reference–style public extracts). Document the exact download URL you
+used when refreshing the files.
 
 ## Limits & next steps
-- Analysis complete in `nba_data_proj.ipynb`
-- HTML findings report published as `index.html` (portfolio-facing summary)
-- Notebook still embeds large inline images; report is the lighter shareable view
+- Historical extracts; definitions change across eras
+- Extreme PER outliers need minute filters before storytelling
 
 ## Tools
 - Python, Jupyter, pandas, matplotlib / related viz
@@ -25,8 +30,7 @@ Complete
 
 ## Files
 - `nba_data_proj.ipynb` — full analysis
-- `players.csv`, `seasons.csv` — source tables
 - `index.html`, `style.css`, `report_data.js` — findings report
 
-## View report
-Open `index.html` in a browser (or via GitHub Pages if enabled on this repo).
+## Final visual
+Open `index.html` — portfolio findings report.

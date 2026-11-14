@@ -2,18 +2,21 @@
 
 ## Summary
 Regression challenge to predict student exam scores. Pipelines one-hot encode
-categorical features, evaluate with RMSE, and compare regularized linear models
-(LASSO) against gradient boosting (XGBoost) for submission files.
+categoricals, evaluate with RMSE, and compare LASSO vs XGBoost.
 
 ## Data & methodology
-- Train / test CSVs with target `exam_score` on the training set
-- One-hot encoding for categoricals; 70/30 train–validation split
-- LASSO (`glmnet`, lambda.1se) and XGBoost with parameter sweeps
-- Primary metric: RMSE; export prediction CSVs for leaderboard submission
+- Train / test tables with target `exam_score` on train
+- 70/30 holdout; LASSO (`lambda.1se`) and XGBoost; RMSE metric
+
+## Data (not in git)
+Keep `train.csv` / `test.csv` (and any submission CSVs) locally under
+`pred_test_score/`.
+
+**Source:** Kaggle-style student exam score prediction challenge data. Add the
+competition URL when available.
 
 ## Limits & next steps
-- Challenge-specific feature set; limited external validation beyond holdout RMSE
-- Could add feature-importance plots and residual diagnostics to an HTML report
+- Task-specific features; limited external validation beyond holdout RMSE
 
 ## Tools
 - R: dplyr, caret, glmnet, xgboost
@@ -23,4 +26,4 @@ Complete
 
 ## Files
 - `pred_test_score/pred_student_score.ipynb` — cleaning, models, submissions
-- `pred_test_score/RegressionPredictLabel*.csv` — prediction outputs
+- `pred_test_score/pred_test_score.Rmd` — companion write-up
