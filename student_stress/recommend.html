@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Stress — Peer Recommendation Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="recommend.css">
+</head>
+<body>
+<div class="page">
+  <aside class="explain">
+    <p class="eyebrow">Prototype · student stress</p>
+    <h1>Peer-informed first-line support</h1>
+    <p>Transparent evidence: show what coping approaches appear more often among students with a similar stress profile — then a clear path to professional help if that’s not enough.</p>
+    <label for="profileSelect">Similar profile</label>
+    <select id="profileSelect"></select>
+    <p class="fine" id="disclaimer"></p>
+    <p class="fine"><a href="index.html">← Back to exploration dashboard</a></p>
+  </aside>
+
+  <main class="phone" aria-label="Recommendation prototype">
+    <div class="phone__chrome">Example output</div>
+    <section class="card card--title">Your recommendation</section>
+    <section class="card card--dashed" id="cohortLine">Based on — students with similar profile</section>
+    <div class="rec-grid" id="recGrid"></div>
+    <a class="card card--referral" href="https://www.iasp.info/suicidalthoughts/" target="_blank" rel="noopener">
+      <span class="warn" aria-hidden="true">!</span>
+      <span>Still struggling → Connect with professional help</span>
+    </a>
+  </main>
+</div>
+<script src="recommend_data.js"></script>
+<script src="recommend.js"></script>
+</body>
+</html>

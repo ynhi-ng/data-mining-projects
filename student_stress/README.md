@@ -32,5 +32,10 @@ Complete
 - `index.html`, `style.css`, `dashboard_data.js` — static dashboard
 - `app.R` — Shiny companion (needs local `student_stress.csv`)
 
-## Final visual
-Open `index.html` (or `shiny::runApp()`).
+## Final visuals
+- Exploration dashboard: open `index.html` (or `shiny::runApp()`)
+- **Peer recommendation prototype:** open `recommend.html` — wireframe-style
+  “your recommendation” cards from similar-profile peers, with a professional-help referral
+
+## Prototype files
+- `recommend.html` / `recommend.css` / `recommend.js` / `recommend_data.js`
