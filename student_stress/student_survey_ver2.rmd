@@ -1,0 +1,112 @@
+---
+title: "UK Student Survey — Analysis Report"
+author: "Nhi Nguyen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: haddock
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 5)
+```
+
+```{r load the library}
+
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(tm)
+library(readxl)
+library(arules)
+library(arulesViz)
+
+
+```
+
+```{r loading dataset}
+
+read the file
+uk_student_data = read_excel("uk_student_survey2020.xlsx")
+cat("Excel file loaded successfully")
+
+cat("DATASET OVERVIEW\n")
+cat("========================================\n")
+cat("Rows:", nrow(uk_student_data), "\n")
+cat("Columns:", ncol(uk_student_data), "\n\n")
+
+
+```
+
+
+```{r rename the cols}
+
+
+
+clean_names <- function(name) {
+  
+  # Special handling for "Please indicate how often..." format
+  if (grepl("please indicate how often you have experienced the following over the last three months:", tolower(name))) {
+    name <- sub(".*- ", "", name)
+  }
+  
+  # Then apply standard cleaning
+  name %>%
+    tolower() %>%
+    gsub("please ", "", .) %>%
+    gsub("what is your ", "", .) %>%
+    gsub("how often have you felt ", "", .) %>%
+    gsub("how often ", "", .) %>%
+    gsub("do you feel that ", "", .) %>%
+    gsub("please describe ", "", .) %>%
+    gsub("please state ", "", .) %>%
+    gsub("\\?", "", .) %>%
+    gsub(":", "", .) %>%
+    gsub(" in years", "", .) %>%
+    gsub(" over the last three months", "", .) %>%
+    # Additional cleaning for specific columns
+    gsub("your coping mechanisms for stress", "coping_mechanisms", .) %>%
+    gsub("you are getting enough support from your university", "university_support", .) %>%
+    gsub("your coping mechanisms help to manage or relieve stress successfully", "effective_scale", .) %>%
+    gsub("you felt stressed over the last three months", "felt_stress", .)
+    # Final standardization
+    gsub("[^a-z0-9]+", "_", .) %>%
+    gsub("^_+|_+$", "", .) %>%
+    gsub("_+", "_", .)
+}
+# Apply cleaning
+original_names <- colnames(uk_student_data)
+colnames(uk_student_data) <- sapply(original_names, clean_names)
+
+cat("\n========================================\n")
+cat("COLUMN NAME MAPPINGS\n")
+cat("========================================\n")
+cat("Showing all column transformations:\n\n")
+
+# Create a nice table format
+mapping_df <- data.frame(
+  Original = original_names,
+  Cleaned = colnames(uk_student_data),
+  stringsAsFactors = FALSE
+)
+
+# Print with better formatting
+for (i in 1:nrow(mapping_df)) {
+  cat(sprintf("%2d. %-70s → %s\n", 
+              i, 
+              substr(mapping_df$Original[i], 1, 70),  # Truncate if too long
+              mapping_df$Cleaned[i]))
+}

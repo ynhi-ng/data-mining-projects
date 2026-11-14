@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Players — Findings Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">Exploratory analysis · Findings report</div>
+    <h1>NBA Players</h1>
+    <p class="subtitle">Career and season-level patterns across historical NBA player and performance tables — a readable summary of the notebook analysis.</p>
+  </header>
+
+  <div class="stat-strip" id="stats"></div>
+
+  <section class="panel">
+    <h2>Problem &amp; context</h2>
+    <p class="note">What shows up when biographical career attributes are joined with season-by-season performance?</p>
+    <p>The analysis prepares two public-style tables — players (career span, position, college, physical attributes) and seasons (year, team, minutes, efficiency, shooting splits) — then explores overview distributions and deeper performance views.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Position mix (career table)</h2>
+    <p class="note">Guards and forwards dominate roster history in this extract</p>
+    <div class="chart-box"><canvas id="posChart"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <h2>Key findings</h2>
+    <ul class="findings">
+      <li>About <strong>4,550</strong> player records spanning careers from the late 1940s through 2018, with <strong>473</strong> distinct colleges represented.</li>
+      <li>Season table holds ~<strong>24.7k</strong> rows (1950–2017), suitable for year-over-year and team-level efficiency comparisons.</li>
+      <li>Primary positions concentrate in <strong>G</strong> and <strong>F</strong>, with hybrid labels (F-C, G-F, etc.) capturing role flexibility.</li>
+      <li>Extreme single-season efficiency outliers exist in small-sample rows — any PER leaderboard needs minute filters before storytelling.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Limits &amp; next steps</h2>
+    <ul class="findings">
+      <li>Historical extracts; definitions and tracking change across eras.</li>
+      <li>Notebook remains the full technical artifact; this page is the portfolio-facing summary.</li>
+      <li>Next: add filtered efficiency charts (e.g. min minutes) and era comparisons.</li>
+    </ul>
+  </section>
+
+  <footer>Source notebook: <code>nba_data_proj.ipynb</code> · Data: <code>players.csv</code>, <code>seasons.csv</code></footer>
+</div>
+<script src="report_data.js"></script>
+<script>
+const d = window.NBA_DATA;
+const stats = document.getElementById('stats');
+const items = [
+  [d.n_players.toLocaleString(), 'Players'],
+  [d.n_season_rows.toLocaleString(), 'Season rows'],
+  [d.year_start_min + '–' + d.year_end_max, 'Career span'],
+  [d.n_colleges, 'Colleges']
+];
+stats.innerHTML = items.map(([n,l]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+const labels = Object.keys(d.positions);
+const values = Object.values(d.positions);
+new Chart(document.getElementById('posChart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Players',
+      data: values,
+      backgroundColor: '#0b6e4f'
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+  }
+});
+</script>
+</body>
+</html>

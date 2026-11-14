@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Stress Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Survey exploration · Interactive dashboard</div>
+    <h1>Student Stress</h1>
+    <p class="subtitle">Explore reported mental stress levels by gender and coping mechanism, plus the strongest absolute correlations in the survey extract.</p>
+  </header>
+
+  <div class="controls">
+    <div>
+      <label for="viewSelect">Chart focus</label>
+      <select id="viewSelect">
+        <option value="hist">Stress level distribution</option>
+        <option value="gender">Mean stress by gender</option>
+        <option value="coping">Mean stress by coping mechanism</option>
+        <option value="corr">Top |correlations| with mental stress</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stat-strip" id="stats"></div>
+
+  <section class="panel">
+    <h2 id="chartTitle">Stress level distribution</h2>
+    <p class="note" id="chartNote">Counts of respondents at each mental stress level (survey scale)</p>
+    <div class="chart-box"><canvas id="mainChart"></canvas></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <h2>How to read this</h2>
+      <p class="note">Aggregates exported from <code>student_stress.csv</code></p>
+      <p>Use the dropdown to switch views. Mean comparisons are descriptive; they do not imply causation. The full statistical tests and association rules remain in the R Markdown reports.</p>
+    </section>
+    <section class="panel">
+      <h2>Limits</h2>
+      <p class="note">Self-reported survey · n shown in stats</p>
+      <p>Weak absolute correlations are expected in noisy survey items. Treat charts as exploration aids alongside the written analysis.</p>
+    </section>
+  </div>
+
+  <footer>Dashboard data: <code>dashboard_data.js</code> · Analysis: <code>student_stress.rmd</code></footer>
+</div>
+<script src="dashboard_data.js"></script>
+<script>
+const D = window.STRESS_DATA;
+const stats = document.getElementById('stats');
+stats.innerHTML = [
+  [D.n, 'Respondents'],
+  [D.mean_stress, 'Mean stress'],
+  [Object.keys(D.by_gender).length, 'Gender labels'],
+  [Object.keys(D.by_coping).length, 'Coping types']
+].map(([n,l]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+let chart;
+const ctx = document.getElementById('mainChart');
+const titleEl = document.getElementById('chartTitle');
+const noteEl = document.getElementById('chartNote');
+
+function render(view) {
+  let labels, values, title, note, type = 'bar';
+  if (view === 'hist') {
+    labels = Object.keys(D.stress_hist);
+    values = Object.values(D.stress_hist);
+    title = 'Stress level distribution';
+    note = 'Counts of respondents at each mental stress level';
+  } else if (view === 'gender') {
+    labels = Object.keys(D.by_gender);
+    values = Object.values(D.by_gender);
+    title = 'Mean stress by gender';
+    note = 'Descriptive means only';
+  } else if (view === 'coping') {
+    labels = Object.keys(D.by_coping);
+    values = Object.values(D.by_coping);
+    title = 'Mean stress by coping mechanism';
+    note = 'Sorted by mean stress (desc)';
+  } else {
+    labels = Object.keys(D.corr_top);
+    values = Object.values(D.corr_top);
+    title = 'Top |correlations| with mental stress';
+    note = 'Absolute Pearson correlations on numeric survey fields';
+  }
+  titleEl.textContent = title;
+  noteEl.textContent = note;
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets: [{
+        label: view === 'hist' ? 'Count' : (view === 'corr' ? '|r|' : 'Mean stress'),
+        data: values,
+        backgroundColor: '#9a3412'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 45, minRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+document.getElementById('viewSelect').addEventListener('change', (e) => render(e.target.value));
+render('hist');
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LearnPlatform — Findings Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">K–12 digital learning · 2020 · Findings report</div>
+    <h1>LearnPlatform Engagement</h1>
+    <p class="subtitle">How product usage and access moved through the COVID outbreak — and how engagement relates to district demographics.</p>
+  </header>
+
+  <div class="stat-strip">
+    <div class="stat"><div class="n">2020</div><div class="l">Focus year</div></div>
+    <div class="stat"><div class="n">Weekday peak</div><div class="l">Mon–Thu engagement</div></div>
+    <div class="stat"><div class="n">Google</div><div class="l">Leading provider signal</div></div>
+    <div class="stat"><div class="n">Equity gaps</div><div class="l">Demographics vs engagement</div></div>
+  </div>
+
+  <section class="panel">
+    <h2>Problem &amp; context</h2>
+    <p class="note">District engagement files + product / district metadata</p>
+    <p>The notebook merges LearnPlatform engagement CSVs, cleans engagement index and percent access, and joins product and district attributes to ask how digital learning behaved before and after the COVID shock — and for whom.</p>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <h2>Timing &amp; weekly rhythm</h2>
+      <ul class="findings">
+        <li>Engagement is high Mon–Thu, softens Friday, and drops on weekends.</li>
+        <li>Outbreak weeks (early 2020) show a sharp rise in digital engagement as schooling moved online.</li>
+        <li>Pre-outbreak engagement was already non-trivial — consistent with a digital-device baseline.</li>
+      </ul>
+    </section>
+    <section class="panel">
+      <h2>Products &amp; providers</h2>
+      <ul class="findings">
+        <li>Major providers in the extract include Google, Microsoft, and IXL Learning.</li>
+        <li>Google Docs / Classroom stand out on average engagement and learning-management use.</li>
+        <li>Learning platforms and courseware peak near late March; some content-creation tools rise later.</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Districts &amp; equity signals</h2>
+    <ul class="findings">
+      <li>Internet access and engagement move together — stable access supports higher engagement.</li>
+      <li>Negative association between engagement and share of Black/Hispanic students in a district.</li>
+      <li>Negative association between engagement and free/reduced lunch share.</li>
+      <li>Black/Hispanic share and free/reduced lunch are positively related — poverty and racial composition co-occur in the data.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Limits &amp; next steps</h2>
+    <ul class="findings">
+      <li>Observational aggregates; correlations are not causal.</li>
+      <li>Large raw engagement files stay local; this report carries the narrative findings.</li>
+      <li>Next: add chart exports from notebook aggregates for interactive views.</li>
+    </ul>
+  </section>
+
+  <footer>Source: <code>EDA_LearnPlatform_Final_Project.ipynb</code> · District &amp; product info tables in this folder</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,854 @@
+---
+title: "UK Student Survey — Analysis Report"
+author: "Nhi Nguyen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: haddock
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 5)
+```
+
+#Abstract & Findings
+
+
+
+
+```{r prepare data }
+
+#load library
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(tm)
+library(readxl)
+library(arules)
+library(arulesViz)
+
+set.seed(123)
+
+
+#read the file
+uk_student_data = read_excel("uk_student_survey2020.xlsx")
+cat("Excel file loaded successfully")
+
+cat("DATASET OVERVIEW\n")
+cat("========================================\n")
+cat("Rows:", nrow(uk_student_data), "\n")
+cat("Columns:", ncol(uk_student_data), "\n\n")
+```
+
+
+```{r rename columns}
+
+clean_names <- function(name) {
+  
+  # Special handling for "Please indicate how often..." format
+  if (grepl("please indicate how often you have experienced the following over the last three months:", tolower(name))) {
+    name <- sub(".*- ", "", name)
+  }
+  
+  # Then apply standard cleaning
+  name %>%
+    tolower() %>%
+    gsub("please ", "", .) %>%
+    gsub("what is your ", "", .) %>%
+    gsub("how often have you felt ", "", .) %>%
+    gsub("how often ", "", .) %>%
+    gsub("do you feel that ", "", .) %>%
+    gsub("please describe ", "", .) %>%
+    gsub("please state ", "", .) %>%
+    gsub("\\?", "", .) %>%
+    gsub(":", "", .) %>%
+    gsub(" in years", "", .) %>%
+    gsub(" over the last three months", "", .) %>%
+    # Additional cleaning for specific columns
+    gsub("your coping mechanisms for stress", "coping_mechanisms", .) %>%
+    gsub("you are getting enough support from your university", "university_support", .) %>%
+    gsub("your coping mechanisms help to manage or relieve stress successfully", "coping_effective", .) %>%
+    # Final standardization
+    gsub("[^a-z0-9]+", "_", .) %>%
+    gsub("^_+|_+$", "", .) %>%
+    gsub("_+", "_", .)
+}
+# Apply cleaning
+original_names <- colnames(uk_student_data)
+colnames(uk_student_data) <- sapply(original_names, clean_names)
+
+cat("\n========================================\n")
+cat("COLUMN NAME MAPPINGS\n")
+cat("========================================\n")
+cat("Showing all column transformations:\n\n")
+
+# Create a nice table format
+mapping_df <- data.frame(
+  Original = original_names,
+  Cleaned = colnames(uk_student_data),
+  stringsAsFactors = FALSE
+)
+
+# Print with better formatting
+for (i in 1:nrow(mapping_df)) {
+  cat(sprintf("%2d. %-70s → %s\n", 
+              i, 
+              substr(mapping_df$Original[i], 1, 70),  # Truncate if too long
+              mapping_df$Cleaned[i]))
+}
+
+cat("\n========================================\n")
+```
+
+```{r }
+
+head(uk_student_data,5)
+
+```
+
+```{r linkert scale mapping }
+
+# =============================================================================
+# STEP 3: IDENTIFY AND CONVERT LIKERT SCALES
+# =============================================================================
+
+# Likert scale mapping
+likert_map <- c(
+  "Never" = 1,
+  "Almost never" = 2,
+  "Sometimes" = 3,
+  "Fairly often" = 4,
+  "Very often" = 5
+)
+
+cat("\n========================================\n")
+cat("IDENTIFYING LIKERT SCALE COLUMNS\n")
+cat("========================================\n")
+
+# Identify Likert columns
+likert_values <- c("Never", "Almost never", "Sometimes", "Fairly often", "Very often")
+likert_cols <- c()
+
+for (col in colnames(uk_student_data)) {
+  # Check if column is character type
+  if (is.character(uk_student_data[[col]])) {
+    # Get unique non-NA values
+    unique_vals <- unique(uk_student_data[[col]][!is.na(uk_student_data[[col]])])
+    
+    # Check if any Likert values present
+    if (any(unique_vals %in% likert_values)) {
+      likert_cols <- c(likert_cols, col)
+      cat(sprintf("  ✓ Found Likert column: %s\n", col))
+    }
+  }
+}
+
+cat("\n========================================\n")
+cat("LIKERT SCALE COLUMNS SUMMARY\n")
+cat("========================================\n")
+cat("Total Likert columns found:", length(likert_cols), "\n\n")
+
+if (length(likert_cols) > 0) {
+  cat("Columns to be converted:\n")
+  print(likert_cols)
+  
+  cat("\n========================================\n")
+  cat("CONVERTING LIKERT SCALES TO NUMERIC\n")
+  cat("========================================\n")
+  
+  # Convert Likert to numeric
+  for (col in likert_cols) {
+    # Show before conversion
+    cat(sprintf("\nConverting: %s\n", col))
+    cat("  Before: ")
+    print(table(uk_student_data[[col]], useNA = "ifany"))
+    
+    # Convert
+    uk_student_data[[col]] <- likert_map[trimws(uk_student_data[[col]])]
+    
+    # Show after conversion
+    cat("  After: ")
+    print(summary(uk_student_data[[col]]))
+  }
+  
+  cat("\n✓ All Likert scale conversions complete.\n")
+} else {
+  cat("⚠ WARNING: No Likert scale columns found!\n")
+  cat("Please check your data format.\n")
+}
+
+
+```
+```{r handling missing values}
+
+cat("\n========================================\n")
+cat("MISSING DATA SUMMARY\n")
+cat("========================================\n")
+
+missing_summary <- data.frame(
+  column = colnames(uk_student_data),
+  missing_count = colSums(is.na(uk_student_data)),
+  missing_pct = round(colSums(is.na(uk_student_data)) / nrow(uk_student_data) * 100, 2)
+) %>%
+  filter(missing_count > 0) %>%
+  arrange(desc(missing_pct))
+
+if (nrow(missing_summary) > 0) {
+  print(head(missing_summary, 10))
+  
+  # Impute numerical columns with mean
+  for (col in colnames(uk_student_data)) {
+    if (is.numeric(uk_student_data[[col]]) && any(is.na(uk_student_data[[col]]))) {
+      mean_val <- mean(uk_student_data[[col]], na.rm = TRUE)
+      uk_student_data[[col]][is.na(uk_student_data[[col]])] <- mean_val
+      cat(sprintf("✓ Imputed '%s' with mean: %.2f\n", col, mean_val))
+    }
+  }
+  
+  # Replace NA in text columns with "No response"
+  for (col in colnames(uk_student_data)) {
+    if (is.character(uk_student_data[[col]])) {
+      uk_student_data[[col]][is.na(uk_student_data[[col]]) | uk_student_data[[col]] == ""] <- "No response"
+    }
+  }
+} else {
+  cat("No missing values found.\n")
+}
+
+
+
+
+```
+```{r create stress level categories }
+
+# =============================================================================
+# STEP 5: CREATE STRESS LEVEL CATEGORIES
+# =============================================================================
+
+# First, find the stress column
+stress_col <- grep("stress|felt_stress|how_often_have_you_felt", colnames(uk_student_data), 
+                   ignore.case = TRUE, value = TRUE)[1]
+
+if (is.na(stress_col)) {
+  cat("\n⚠ WARNING: Could not find stress column. Please specify manually.\n")
+  cat("Available columns:\n")
+  print(colnames(uk_student_data))
+  stop("Please specify the stress column manually.")
+} else {
+  cat(sprintf("\n✓ Using stress column: %s\n", stress_col))
+  
+  # Check current values
+  cat("\n========================================\n")
+  cat("CURRENT STRESS COLUMN VALUES\n")
+  cat("========================================\n")
+  print(table(uk_student_data[[stress_col]], useNA = "ifany"))
+  
+  # Define mapping for this specific scale (4-point scale)
+  # Question: "How often have you felt stressed over the last three months?"
+  # Scale interpretation: Higher value = More stress
+  stress_mapping <- c(
+    "To a small extent" = 1,    # Least stressed
+    "Somewhat" = 2,              # Moderately stressed
+    "To a large extent" = 3,     # Very stressed
+    "Completely" = 4             # Most stressed
+  )
+  
+  cat("\nApplying stress scale mapping (1-4):\n")
+  print(stress_mapping)
+  
+  # Convert to numeric
+  uk_student_data[[stress_col]] <- stress_mapping[trimws(uk_student_data[[stress_col]])]
+  
+  cat("\n========================================\n")
+  cat("CONVERTED STRESS VALUES\n")
+  cat("========================================\n")
+  print(summary(uk_student_data[[stress_col]]))
+  print(table(uk_student_data[[stress_col]], useNA = "ifany"))
+  
+  # Check for any NAs (unmapped values)
+  na_count <- sum(is.na(uk_student_data[[stress_col]]))
+  if (na_count > 0) {
+    cat(sprintf("\n⚠ WARNING: %d values could not be mapped. Check for typos or different values.\n", na_count))
+    cat("Unique unmapped values:\n")
+    unmapped <- uk_student_data[[stress_col]][is.na(uk_student_data[[stress_col]])]
+    if (length(unmapped) > 0) {
+      print(unique(unmapped))
+    }
+  }
+  
+  # Create stress level categories for 4-point scale
+  # Adjusted breaks for 1-4 scale:
+  # Low: 1-1.67 (score 1)
+  # Medium: 1.68-2.67 (score 2)  
+  # High: 2.68-4 (scores 3-4)
+  uk_student_data$stress_level <- cut(
+    uk_student_data[[stress_col]],
+    breaks = c(0, 1.67, 2.67, 4),
+    labels = c("Low", "Medium", "High"),
+    include.lowest = TRUE,
+    right = TRUE
+  )
+  
+  # Alternative: Equal intervals (simpler)
+  # uk_student_data$stress_level <- cut(
+  #   uk_student_data[[stress_col]],
+  #   breaks = c(0, 1.5, 2.5, 4),
+  #   labels = c("Low", "Medium", "High"),
+  #   include.lowest = TRUE
+  # )
+  
+  cat("\n========================================\n")
+  cat("STRESS LEVEL DISTRIBUTION\n")
+  cat("========================================\n")
+  cat("Categorization:\n")
+  cat("  Low:    1.00 - 1.67 (To a small extent)\n")
+  cat("  Medium: 1.68 - 2.67 (Somewhat)\n")
+  cat("  High:   2.68 - 4.00 (To a large extent, Completely)\n\n")
+  
+  stress_table <- table(uk_student_data$stress_level, useNA = "ifany")
+  stress_pct <- prop.table(stress_table) * 100
+  
+  for (level in names(stress_table)) {
+    cat(sprintf("  %s: %d (%.1f%%)\n", level, stress_table[level], stress_pct[level]))
+  }
+  
+  # Cross-tabulation to verify mapping
+  cat("\n========================================\n")
+  cat("CROSS-TAB: Original Score vs Category\n")
+  cat("========================================\n")
+  cross_tab <- table(
+    Original_Score = uk_student_data[[stress_col]], 
+    Stress_Level = uk_student_data$stress_level,
+    useNA = "ifany"
+  )
+  print(cross_tab)
+  
+  # Plot stress distribution
+  p_stress <- ggplot(uk_student_data, aes(x = stress_level, fill = stress_level)) +
+    geom_bar() +
+    geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5, size = 5) +
+    scale_fill_manual(values = c("Low" = "#2ECC71", "Medium" = "#F39C12", "High" = "#E74C3C")) +
+    labs(title = "Stress Level Distribution", 
+         subtitle = paste("Based on:", stress_col, "(4-point scale)"),
+         x = "Stress Level", y = "Count") +
+    theme_minimal() +
+    theme(legend.position = "none",
+          text = element_text(size = 12))
+  
+  print(p_stress)
+  
+  # Additional plot: Distribution of numeric scores
+  p_numeric <- ggplot(uk_student_data, aes(x = factor(uk_student_data[[stress_col]]))) +
+    geom_bar(fill = "#3498DB") +
+    geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5, size = 5) +
+    labs(title = "Distribution of Stress Scores",
+         subtitle = "1 = To a small extent, 2 = Somewhat, 3 = To a large extent, 4 = Completely",
+         x = "Stress Score", y = "Count") +
+    theme_minimal()
+  
+  print(p_numeric)
+  
+  cat("\n✓ Stress level categorization complete.\n")
+}
+
+
+```
+```{r identify symption / stressor}
+
+# Identify symptom columns
+symptom_keywords <- c("energy", "headache", "digestion", "anxiety", "sleep", 
+                      "heartbeat", "palpitation", "irritability", "concentration",
+                      "sadness", "tearfulness", "illness", "aches", "pain", "loneliness")
+
+symptom_cols <- c()
+for (keyword in symptom_keywords) {
+  matching <- grep(keyword, colnames(uk_student_data), ignore.case = TRUE, value = TRUE)
+  symptom_cols <- c(symptom_cols, matching)
+}
+symptom_cols <- unique(symptom_cols)
+symptom_cols <- symptom_cols[symptom_cols %in% likert_cols]
+
+cat("\n========================================\n")
+cat("IDENTIFIED SYMPTOM COLUMNS\n")
+cat("========================================\n")
+cat("Total:", length(symptom_cols), "\n")
+print(symptom_cols)
+
+# Identify stressor columns
+stressor_keywords <- c("overload", "workload", "time", "competition", 
+                       "supervisor", "tutor", "environment", "criticism", 
+                       "relaxation", "home", "financial", 
+                       "confidence", "academic", "career", "employment")
+
+stressor_cols <- c()
+for (keyword in stressor_keywords) {
+  matching <- grep(keyword, colnames(uk_student_data), ignore.case = TRUE, value = TRUE)
+  stressor_cols <- c(stressor_cols, matching)
+}
+stressor_cols <- unique(stressor_cols)
+stressor_cols <- stressor_cols[stressor_cols %in% likert_cols]
+
+cat("\n========================================\n")
+cat("IDENTIFIED STRESSOR COLUMNS\n")
+cat("========================================\n")
+cat("Total:", length(stressor_cols), "\n")
+print(stressor_cols)
+
+
+
+```
+```{r symptom and stressor analysis}
+
+
+# Calculate mean scores for symptoms
+symptom_means <- data.frame(
+  symptom = symptom_cols,
+  mean_score = sapply(symptom_cols, function(col) mean(uk_student_data[[col]], na.rm = TRUE))
+) %>%
+  arrange(desc(mean_score))
+
+cat("\n========================================\n")
+cat("TOP 10 SYMPTOMS (BY SEVERITY)\n")
+cat("========================================\n")
+print(head(symptom_means, 10))
+
+# Plot symptoms
+ggplot(head(symptom_means, 10), aes(x = reorder(symptom, mean_score), y = mean_score)) +
+  geom_bar(stat = "identity", fill = "#E74C3C") +
+  coord_flip() +
+  labs(title = "Top 10 Symptoms by Severity", 
+       subtitle = "Scale: 1=Never, 5=Very often",
+       x = "Symptom", y = "Average Score") +
+  theme_minimal()
+
+# Calculate mean scores for stressors
+stressor_means <- data.frame(
+  stressor = stressor_cols,
+  mean_score = sapply(stressor_cols, function(col) mean(uk_student_data[[col]], na.rm = TRUE))
+) %>%
+  arrange(desc(mean_score))
+
+cat("\n========================================\n")
+cat("TOP 10 STRESSORS (BY SEVERITY)\n")
+cat("========================================\n")
+print(head(stressor_means, 10))
+
+# Plot stressors
+ggplot(head(stressor_means, 10), aes(x = reorder(stressor, mean_score), y = mean_score)) +
+  geom_bar(stat = "identity", fill = "#3498DB") +
+  coord_flip() +
+  labs(title = "Top 10 Stressors by Severity",
+       subtitle = "Scale: 1=Never, 5=Very often",
+       x = "Stressor", y = "Average Score") +
+  theme_minimal()
+
+
+
+```
+```{r corr analysis}
+
+# Combine all features
+all_features <- unique(c(symptom_cols, stressor_cols))
+all_features <- all_features[all_features %in% colnames(uk_student_data)]
+
+# Add stress column
+cor_cols <- c(stress_col, all_features)
+
+# Calculate correlation matrix
+cor_matrix <- cor(uk_student_data[, cor_cols], use = "pairwise.complete.obs")
+
+# Extract correlations with stress
+stress_cors <- data.frame(
+  feature = rownames(cor_matrix)[-1],  # Exclude stress itself
+  correlation = cor_matrix[-1, stress_col]
+) %>%
+  arrange(desc(abs(correlation)))
+
+cat("\n========================================\n")
+cat("TOP 15 FEATURES CORRELATED WITH STRESS\n")
+cat("========================================\n")
+print(head(stress_cors, 15))
+
+# Plot top correlations
+ggplot(head(stress_cors, 15), aes(x = reorder(feature, correlation), y = correlation)) +
+  geom_bar(stat = "identity", aes(fill = correlation > 0)) +
+  scale_fill_manual(values = c("TRUE" = "#E74C3C", "FALSE" = "#3498DB")) +
+  coord_flip() +
+  labs(title = "Top 15 Features Correlated with Stress",
+       x = "Feature", y = "Correlation Coefficient") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+```
+```{r NLP text analysis}
+library(tokenizers)  
+# Identify coping mechanism column
+coping_col <- grep("coping", colnames(uk_student_data), ignore.case = TRUE, value = TRUE)[1]
+
+if (is.na(coping_col)) {
+  cat("\n⚠ WARNING: Could not find coping mechanism column.\n")
+} else {
+  cat(sprintf("\n✓ Using coping column: %s\n", coping_col))
+}  
+  # Extract text (exclude "No response")
+  coping_text <- uk_student_data[[coping_col]]
+  coping_text_clean <- coping_text[coping_text != "No response" & coping_text != ""]
+  
+  cat("\n========================================\n")
+  cat("COPING MECHANISM TEXT SUMMARY\n")
+  cat("========================================\n")
+  cat("Total responses:", length(coping_text), "\n")
+  cat("Valid responses:", length(coping_text_clean), "\n")
+  cat("\nSample responses:\n")
+  print(head(coping_text_clean, 3))
+
+
+  # Text preprocessing
+  corpus <- Corpus(VectorSource(coping_text_clean))
+  corpus_clean <- corpus %>%
+    tm_map(content_transformer(tolower)) %>%
+    tm_map(removePunctuation) %>%
+    tm_map(removeNumbers) %>%
+    tm_map(stripWhitespace) %>%
+    tm_map(removeWords, stopwords("english")) %>%
+    tm_map(removeWords, c("etc", "also", "just", "can", "get", "try", "make"))
+  
+  # Create DTM
+  dtm <- DocumentTermMatrix(corpus_clean)
+  dtm_matrix <- as.matrix(dtm)
+  
+  # Term frequencies
+  term_freq <- sort(colSums(dtm_matrix), decreasing = TRUE)
+  term_df <- data.frame(term = names(term_freq), frequency = term_freq)
+  
+  cat("\n========================================\n")
+  cat("TOP 20 TERMS IN COPING MECHANISMS\n")
+  cat("========================================\n")
+  print(head(term_df, 20))
+  
+  # Word cloud
+  #install.packages("wordcloud")
+  #library(wordcloud)
+  #wordcloud(words = term_df$term, 
+            #freq = term_df$frequency,
+            #min.freq = 2,
+            #max.words = 100,
+            #random.order = FALSE,
+            #colors = brewer.pal(8, "Dark2"))
+ # title("Coping Mechanisms Word Cloud")
+  
+  # Bar chart of top terms
+  ggplot(head(term_df, 20), aes(x = reorder(term, frequency), y = frequency)) +
+    geom_bar(stat = "identity", fill = "#9B59B6") +
+    coord_flip() +
+    labs(title = "Top 20 Terms in Coping Mechanisms",
+         x = "Term", y = "Frequency") +
+    theme_minimal()
+  
+  # =============================================================================
+  # STEP 10: CATEGORIZE COPING MECHANISMS
+  # =============================================================================
+  
+  # Define categories
+  coping_categories <- list(
+    exercise = c("exercise", "gym", "workout", "running", "run", "jogging", "sports", 
+                 "swimming", "cycling", "fitness", "walk", "walking"),
+    social = c("friends", "family", "talking", "socializing", "hang", "hanging", "people"),
+    meditation_relaxation = c("meditation", "meditate", "breathing", "breath", "relaxation", 
+                             "relax", "mindfulness", "yoga"),
+    entertainment = c("music", "movie", "movies", "tv", "watch", "watching", "netflix", 
+                     "series", "film", "gaming", "game", "games"),
+    hobbies = c("reading", "read", "book", "books", "hobby", "art", "drawing", "painting", 
+                "guitar", "play", "playing"),
+    nature = c("nature", "outdoor", "outdoors", "park", "garden", "outside", "hiking"),
+    food_drink = c("eating", "eat", "food", "cooking", "cook", "tea", "coffee", "drink", "drinking"),
+    sleep_rest = c("sleep", "sleeping", "nap", "rest", "resting", "bed"),
+    therapy = c("therapy", "therapist", "counseling", "counsellor", "professional")
+  )
+  
+  # Create binary variables for each category
+  for (category in names(coping_categories)) {
+    keywords <- coping_categories[[category]]
+    pattern <- paste0("\\b(", paste(keywords, collapse = "|"), ")\\b")
+    uk_student_data[[paste0("coping_", category)]] <- as.integer(
+      grepl(pattern, tolower(uk_student_data[[coping_col]]))
+    )
+  }
+  
+  # Calculate frequencies
+  coping_category_cols <- grep("^coping_", colnames(uk_student_data), value = TRUE)
+  
+  category_freq <- data.frame(
+    category = gsub("coping_", "", coping_category_cols),
+    count = sapply(coping_category_cols, function(col) sum(uk_student_data[[col]], na.rm = TRUE)),
+    percentage = sapply(coping_category_cols, function(col) 
+      round(sum(uk_student_data[[col]], na.rm = TRUE) / nrow(uk_student_data) * 100, 2))
+  ) %>%
+    arrange(desc(count))
+  
+  cat("\n========================================\n")
+  cat("COPING MECHANISM CATEGORIES\n")
+  cat("========================================\n")
+  print(category_freq)
+  
+  # Plot categories
+  ggplot(category_freq, aes(x = reorder(category, count), y = count)) +
+    geom_bar(stat = "identity", fill = "#1ABC9C") +
+    geom_text(aes(label = paste0(count, " (", percentage, "%)")), hjust = -0.1) +
+    coord_flip() +
+    labs(title = "Coping Mechanism Categories",
+         x = "Category", y = "Count") +
+    theme_minimal() +
+    expand_limits(y = max(category_freq$count) * 1.15)
+
+
+
+
+```
+
+```{r coping mechanism}
+# =============================================================================
+# STEP 10: CATEGORIZE COPING MECHANISMS
+# =============================================================================
+
+cat("\n========================================\n")
+cat("CATEGORIZING COPING MECHANISMS\n")
+cat("========================================\n")
+
+# Check if coping column exists and has data
+if (!exists("coping_col") || is.na(coping_col)) {
+  cat("⚠ WARNING: Coping column not found. Skipping this step.\n")
+} else if (all(is.na(uk_student_data[[coping_col]])) || 
+           all(uk_student_data[[coping_col]] == "No response")) {
+  cat("⚠ WARNING: No valid coping responses found. Skipping this step.\n")
+} else {
+  
+  # Define categories
+  coping_categories <- list(
+    exercise = c("exercise", "gym", "workout", "running", "run", "jogging", "sports", 
+                 "swimming", "cycling", "fitness", "walk", "walking"),
+    social = c("friends", "family", "talking", "socializing", "hang", "hanging", "people"),
+    meditation_relaxation = c("meditation", "meditate", "breathing", "breath", "relaxation", 
+                             "relax", "mindfulness", "yoga"),
+    entertainment = c("music", "movie", "movies", "tv", "watch", "watching", "netflix", 
+                     "series", "film", "gaming", "game", "games"),
+    hobbies = c("reading", "read", "book", "books", "hobby", "art", "drawing", "painting", 
+                "guitar", "play", "playing"),
+    nature = c("nature", "outdoor", "outdoors", "park", "garden", "outside", "hiking"),
+    food_drink = c("eating", "eat", "food", "cooking", "cook", "tea", "coffee", "drink", "drinking"),
+    sleep_rest = c("sleep", "sleeping", "nap", "rest", "resting", "bed"),
+    therapy = c("therapy", "therapist", "counseling", "counsellor", "professional")
+  )
+  
+  cat("\nCreating binary variables for each category...\n")
+  
+  # Create binary variables for each category
+  for (category in names(coping_categories)) {
+    keywords <- coping_categories[[category]]
+    pattern <- paste0("\\b(", paste(keywords, collapse = "|"), ")\\b")
+    
+    # Create the column with explicit steps
+    text_to_search <- uk_student_data[[coping_col]]
+    text_to_search[is.na(text_to_search)] <- ""
+    text_lower <- tolower(text_to_search)
+    matches <- grepl(pattern, text_lower, perl = TRUE)
+    
+    uk_student_data[[paste0("coping_", category)]] <- as.integer(matches)
+    
+    cat(sprintf("  ✓ Created: coping_%s (matches: %d)\n", category, sum(matches)))
+  }
+  
+  # Get coping category columns - EXCLUDE coping_effective
+  coping_category_cols <- grep("^coping_", colnames(uk_student_data), value = TRUE)
+  coping_category_cols <- coping_category_cols[coping_category_cols != "coping_effective"]
+  
+  cat("\n========================================\n")
+  cat("COPING CATEGORY COLUMNS (for analysis)\n")
+  cat("========================================\n")
+  print(coping_category_cols)
+  
+  # Calculate frequencies
+  cat("\n========================================\n")
+  cat("CALCULATING FREQUENCIES\n")
+  cat("========================================\n")
+  
+  category_freq <- data.frame(
+    category = character(),
+    count = numeric(),
+    percentage = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (col in coping_category_cols) {
+    cat_name <- gsub("coping_", "", col)
+    count_val <- sum(uk_student_data[[col]], na.rm = TRUE)
+    pct_val <- round(count_val / nrow(uk_student_data) * 100, 2)
+    
+    category_freq <- rbind(category_freq, data.frame(
+      category = cat_name,
+      count = count_val,
+      percentage = pct_val,
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  # Sort by count
+  category_freq <- category_freq %>% arrange(desc(count))
+  
+  cat("\n========================================\n")
+  cat("COPING MECHANISM CATEGORIES\n")
+  cat("========================================\n")
+  print(category_freq)
+  
+  # Only plot if there's data
+  if (sum(category_freq$count) > 0) {
+    # Plot categories
+    p_coping_cat <- ggplot(category_freq, aes(x = reorder(category, count), y = count)) +
+      geom_bar(stat = "identity", fill = "#1ABC9C") +
+      geom_text(aes(label = paste0(count, " (", percentage, "%)")), 
+                hjust = -0.1, size = 3) +
+      coord_flip() +
+      labs(title = "Coping Mechanism Categories",
+           subtitle = paste("Based on", nrow(uk_student_data), "responses"),
+           x = "Category", y = "Count") +
+      theme_minimal() +
+      expand_limits(y = max(category_freq$count) * 1.15)
+    
+    print(p_coping_cat)
+    
+    cat("\n✓ Coping categorization complete.\n")
+  } else {
+    cat("\n⚠ WARNING: No coping mechanisms detected in any category.\n")
+    cat("\nSample of actual coping text (first 5 non-'No response' values):\n")
+    sample_text <- head(uk_student_data[[coping_col]][
+      uk_student_data[[coping_col]] != "No response" & 
+      !is.na(uk_student_data[[coping_col]])
+    ], 5)
+    for (i in seq_along(sample_text)) {
+      cat(sprintf("%d. %s\n", i, sample_text[i]))
+    }
+  }
+}
+```
+
+
+```{r}
+
+cat("\n========================================\n")
+cat("ANALYZING COPING EFFECTIVENESS\n")
+cat("========================================\n")
+
+# Identify effectiveness column
+eff_col <- grep("help|manage|relieve|success|effective", colnames(uk_student_data), 
+                ignore.case = TRUE, value = TRUE)
+
+# Filter to exclude any coping_ columns
+eff_col <- eff_col[!grepl("^coping_", eff_col)]
+
+if (length(eff_col) == 0) {
+  cat("⚠ WARNING: Could not find effectiveness column.\n")
+  cat("Available columns containing 'help', 'manage', 'relieve', etc.:\n")
+  relevant_cols <- grep("coping|help|manage", colnames(uk_student_data), 
+                       ignore.case = TRUE, value = TRUE)
+  print(relevant_cols)
+} else {
+  eff_col <- eff_col[1]  # Take first match
+  cat(sprintf("✓ Using effectiveness column: %s\n", eff_col))
+  
+  # Check current values
+  cat("\nEffectiveness responses:\n")
+  print(table(uk_student_data[[eff_col]], useNA = "ifany"))
+  
+  # Standardize responses (lowercase, trim)
+  uk_student_data[[eff_col]] <- tolower(trimws(uk_student_data[[eff_col]]))
+  
+  # Create binary effectiveness variable
+  uk_student_data$coping_effective_binary <- ifelse(
+    grepl("yes", uk_student_data[[eff_col]], ignore.case = TRUE), 1,
+    ifelse(grepl("no", uk_student_data[[eff_col]], ignore.case = TRUE), 0, NA)
+  )
+  
+  cat("\nEffectiveness binary conversion:\n")
+  print(table(uk_student_data$coping_effective_binary, 
+              uk_student_data[[eff_col]], useNA = "ifany"))
+  
+  # Calculate effectiveness by category
+  cat("\n========================================\n")
+  cat("EFFECTIVENESS BY COPING CATEGORY\n")
+  cat("========================================\n")
+  
+  eff_by_cat <- data.frame(
+    category = character(),
+    total_using = numeric(),
+    effective_count = numeric(),
+    not_effective_count = numeric(),
+    effectiveness_rate = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (col in coping_category_cols) {
+    # Filter people using this coping mechanism
+    using_this <- uk_student_data[uk_student_data[[col]] == 1, ]
+    
+    if (nrow(using_this) > 0) {
+      total <- nrow(using_this)
+      effective <- sum(using_this$coping_effective_binary == 1, na.rm = TRUE)
+      not_effective <- sum(using_this$coping_effective_binary == 0, na.rm = TRUE)
+      rate <- round(effective / total * 100, 2)
+      
+      eff_by_cat <- rbind(eff_by_cat, data.frame(
+        category = gsub("coping_", "", col),
+        total_using = total,
+        effective_count = effective,
+        not_effective_count = not_effective,
+        effectiveness_rate = rate,
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
+  
+  # Sort by effectiveness rate
+  eff_by_cat <- eff_by_cat %>% arrange(desc(effectiveness_rate))
+  
+  print(eff_by_cat)
+  
+  # Plot effectiveness (minimum 5 users)
+  eff_filtered <- eff_by_cat %>% filter(total_using >= 5)
+  
+  if (nrow(eff_filtered) > 0) {
+    p_effectiveness <- ggplot(eff_filtered, 
+                             aes(x = reorder(category, effectiveness_rate), 
+                                 y = effectiveness_rate)) +
+      geom_bar(stat = "identity", fill = "#27AE60") +
+      geom_text(aes(label = paste0(effectiveness_rate, "%\n(n=", total_using, ")")), 
+                hjust = -0.1, size = 3) +
+      coord_flip() +
+      labs(title = "Coping Mechanism Effectiveness",
+           subtitle = "Categories with at least 5 users",
+           x = "Coping Category", y = "Effectiveness Rate (%)") +
+      theme_minimal() +
+      expand_limits(y = 100)
+    
+    print(p_effectiveness)
+  } else {
+    cat("⚠ Not enough data for effectiveness visualization (need at least 5 users per category)\n")
+  }
+  
+  cat("\n✓ Effectiveness analysis complete.\n")
+}
+
+```

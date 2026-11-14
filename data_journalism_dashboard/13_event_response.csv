@@ -1,0 +1,145 @@
+event,event_ym,month_offset,year_month,group,indexed,count,relative
+ChatGPT launch,2022-11,-3,2022-08,news,3.0,9.0,1.286
+ChatGPT launch,2022-11,-2,2022-09,news,3.333,10.0,1.429
+ChatGPT launch,2022-11,-1,2022-10,news,2.333,7.0,1.0
+ChatGPT launch,2022-11,0,2022-11,news,2.333,7.0,1.0
+ChatGPT launch,2022-11,1,2022-12,news,4.333,13.0,1.857
+ChatGPT launch,2022-11,2,2023-01,news,8.667,26.0,3.715
+ChatGPT launch,2022-11,3,2023-02,news,12.667,38.0,5.429
+ChatGPT launch,2022-11,4,2023-03,news,14.0,42.0,6.001
+ChatGPT launch,2022-11,-3,2022-08,public,1.0,0.1,1.0
+ChatGPT launch,2022-11,-2,2022-09,public,1.0,0.1,1.0
+ChatGPT launch,2022-11,-1,2022-10,public,1.0,0.1,1.0
+ChatGPT launch,2022-11,0,2022-11,public,1.0,0.1,1.0
+ChatGPT launch,2022-11,1,2022-12,public,40.0,4.0,40.0
+ChatGPT launch,2022-11,2,2023-01,public,90.0,9.0,90.0
+ChatGPT launch,2022-11,3,2023-02,public,160.0,16.0,160.0
+ChatGPT launch,2022-11,4,2023-03,public,180.0,18.0,180.0
+ChatGPT launch,2022-11,-3,2022-08,research,1.059,559.0,0.653
+ChatGPT launch,2022-11,-2,2022-09,research,1.191,629.0,0.735
+ChatGPT launch,2022-11,-1,2022-10,research,1.621,856.0,1.0
+ChatGPT launch,2022-11,0,2022-11,research,1.434,757.0,0.885
+ChatGPT launch,2022-11,1,2022-12,research,1.276,674.0,0.787
+ChatGPT launch,2022-11,2,2023-01,research,1.07,565.0,0.66
+ChatGPT launch,2022-11,3,2023-02,research,1.229,649.0,0.758
+ChatGPT launch,2022-11,4,2023-03,research,1.657,875.0,1.022
+Claude 3.5 Sonnet,2024-06,-3,2024-03,news,16.0,48.0,0.842
+Claude 3.5 Sonnet,2024-06,-2,2024-04,news,17.667,53.0,0.93
+Claude 3.5 Sonnet,2024-06,-1,2024-05,news,19.0,57.0,1.0
+Claude 3.5 Sonnet,2024-06,0,2024-06,news,16.667,50.0,0.877
+Claude 3.5 Sonnet,2024-06,1,2024-07,news,17.333,52.0,0.912
+Claude 3.5 Sonnet,2024-06,2,2024-08,news,15.333,46.0,0.807
+Claude 3.5 Sonnet,2024-06,3,2024-09,news,17.333,52.0,0.912
+Claude 3.5 Sonnet,2024-06,4,2024-10,news,15.333,46.0,0.807
+Claude 3.5 Sonnet,2024-06,-3,2024-03,public,250.0,25.0,0.893
+Claude 3.5 Sonnet,2024-06,-2,2024-04,public,260.0,26.0,0.929
+Claude 3.5 Sonnet,2024-06,-1,2024-05,public,280.0,28.0,1.0
+Claude 3.5 Sonnet,2024-06,0,2024-06,public,250.0,25.0,0.893
+Claude 3.5 Sonnet,2024-06,1,2024-07,public,220.0,22.0,0.786
+Claude 3.5 Sonnet,2024-06,2,2024-08,public,280.0,28.0,1.0
+Claude 3.5 Sonnet,2024-06,3,2024-09,public,380.0,38.0,1.357
+Claude 3.5 Sonnet,2024-06,4,2024-10,public,450.0,45.0,1.607
+Claude 3.5 Sonnet,2024-06,-3,2024-03,research,2.688,1419.0,1.0
+Claude 3.5 Sonnet,2024-06,-2,2024-04,research,2.508,1324.0,0.933
+Claude 3.5 Sonnet,2024-06,-1,2024-05,research,2.689,1420.0,1.0
+Claude 3.5 Sonnet,2024-06,0,2024-06,research,3.193,1686.0,1.187
+Claude 3.5 Sonnet,2024-06,1,2024-07,research,3.026,1598.0,1.125
+Claude 3.5 Sonnet,2024-06,2,2024-08,research,2.597,1371.0,0.966
+Claude 3.5 Sonnet,2024-06,3,2024-09,research,2.635,1391.0,0.98
+Claude 3.5 Sonnet,2024-06,4,2024-10,research,4.316,2279.0,1.605
+DeepSeek R1,2025-01,-3,2024-10,news,15.333,46.0,1.045
+DeepSeek R1,2025-01,-2,2024-11,news,18.667,56.0,1.273
+DeepSeek R1,2025-01,-1,2024-12,news,14.667,44.0,1.0
+DeepSeek R1,2025-01,0,2025-01,news,27.667,83.0,1.886
+DeepSeek R1,2025-01,1,2025-02,news,26.333,79.0,1.795
+DeepSeek R1,2025-01,2,2025-03,news,17.667,53.0,1.205
+DeepSeek R1,2025-01,3,2025-04,news,14.0,42.0,0.955
+DeepSeek R1,2025-01,4,2025-05,news,19.0,57.0,1.295
+DeepSeek R1,2025-01,-3,2024-10,public,450.0,45.0,0.978
+DeepSeek R1,2025-01,-2,2024-11,public,500.0,50.0,1.087
+DeepSeek R1,2025-01,-1,2024-12,public,460.0,46.0,1.0
+DeepSeek R1,2025-01,0,2025-01,public,490.0,49.0,1.065
+DeepSeek R1,2025-01,1,2025-02,public,560.0,56.0,1.217
+DeepSeek R1,2025-01,2,2025-03,public,630.0,63.0,1.37
+DeepSeek R1,2025-01,3,2025-04,public,750.0,75.0,1.63
+DeepSeek R1,2025-01,4,2025-05,public,770.0,77.0,1.674
+DeepSeek R1,2025-01,-3,2024-10,research,4.316,2279.0,1.206
+DeepSeek R1,2025-01,-2,2024-11,research,3.019,1594.0,0.844
+DeepSeek R1,2025-01,-1,2024-12,research,3.579,1890.0,1.0
+DeepSeek R1,2025-01,0,2025-01,research,2.864,1512.0,0.8
+DeepSeek R1,2025-01,1,2025-02,research,3.794,2003.0,1.06
+DeepSeek R1,2025-01,2,2025-03,research,3.934,2077.0,1.099
+DeepSeek R1,2025-01,3,2025-04,research,3.742,1976.0,1.046
+DeepSeek R1,2025-01,4,2025-05,research,4.722,2493.0,1.319
+GPT-4 release,2023-03,-3,2022-12,news,4.333,13.0,0.342
+GPT-4 release,2023-03,-2,2023-01,news,8.667,26.0,0.684
+GPT-4 release,2023-03,-1,2023-02,news,12.667,38.0,1.0
+GPT-4 release,2023-03,0,2023-03,news,14.0,42.0,1.105
+GPT-4 release,2023-03,1,2023-04,news,17.667,53.0,1.395
+GPT-4 release,2023-03,2,2023-05,news,28.333,85.0,2.237
+GPT-4 release,2023-03,3,2023-06,news,16.667,50.0,1.316
+GPT-4 release,2023-03,4,2023-07,news,26.0,78.0,2.053
+GPT-4 release,2023-03,-3,2022-12,public,40.0,4.0,0.25
+GPT-4 release,2023-03,-2,2023-01,public,90.0,9.0,0.562
+GPT-4 release,2023-03,-1,2023-02,public,160.0,16.0,1.0
+GPT-4 release,2023-03,0,2023-03,public,180.0,18.0,1.125
+GPT-4 release,2023-03,1,2023-04,public,210.0,21.0,1.312
+GPT-4 release,2023-03,2,2023-05,public,220.0,22.0,1.375
+GPT-4 release,2023-03,3,2023-06,public,200.0,20.0,1.25
+GPT-4 release,2023-03,4,2023-07,public,160.0,16.0,1.0
+GPT-4 release,2023-03,-3,2022-12,research,1.276,674.0,1.038
+GPT-4 release,2023-03,-2,2023-01,research,1.07,565.0,0.871
+GPT-4 release,2023-03,-1,2023-02,research,1.229,649.0,1.0
+GPT-4 release,2023-03,0,2023-03,research,1.657,875.0,1.348
+GPT-4 release,2023-03,1,2023-04,research,1.365,721.0,1.111
+GPT-4 release,2023-03,2,2023-05,research,1.877,991.0,1.527
+GPT-4 release,2023-03,3,2023-06,research,1.756,927.0,1.429
+GPT-4 release,2023-03,4,2023-07,research,1.568,828.0,1.276
+Gemini 1.5 Pro,2024-02,-3,2023-11,news,26.333,79.0,1.646
+Gemini 1.5 Pro,2024-02,-2,2023-12,news,12.333,37.0,0.771
+Gemini 1.5 Pro,2024-02,-1,2024-01,news,16.0,48.0,1.0
+Gemini 1.5 Pro,2024-02,0,2024-02,news,21.333,64.0,1.333
+Gemini 1.5 Pro,2024-02,1,2024-03,news,16.0,48.0,1.0
+Gemini 1.5 Pro,2024-02,2,2024-04,news,17.667,53.0,1.104
+Gemini 1.5 Pro,2024-02,3,2024-05,news,19.0,57.0,1.188
+Gemini 1.5 Pro,2024-02,4,2024-06,news,16.667,50.0,1.042
+Gemini 1.5 Pro,2024-02,-3,2023-11,public,240.0,24.0,1.043
+Gemini 1.5 Pro,2024-02,-2,2023-12,public,220.0,22.0,0.957
+Gemini 1.5 Pro,2024-02,-1,2024-01,public,230.0,23.0,1.0
+Gemini 1.5 Pro,2024-02,0,2024-02,public,240.0,24.0,1.043
+Gemini 1.5 Pro,2024-02,1,2024-03,public,250.0,25.0,1.087
+Gemini 1.5 Pro,2024-02,2,2024-04,public,260.0,26.0,1.13
+Gemini 1.5 Pro,2024-02,3,2024-05,public,280.0,28.0,1.217
+Gemini 1.5 Pro,2024-02,4,2024-06,public,250.0,25.0,1.087
+Gemini 1.5 Pro,2024-02,-3,2023-11,research,2.269,1198.0,1.145
+Gemini 1.5 Pro,2024-02,-2,2023-12,research,2.131,1125.0,1.076
+Gemini 1.5 Pro,2024-02,-1,2024-01,research,1.981,1046.0,1.0
+Gemini 1.5 Pro,2024-02,0,2024-02,research,2.385,1259.0,1.204
+Gemini 1.5 Pro,2024-02,1,2024-03,research,2.688,1419.0,1.357
+Gemini 1.5 Pro,2024-02,2,2024-04,research,2.508,1324.0,1.266
+Gemini 1.5 Pro,2024-02,3,2024-05,research,2.689,1420.0,1.357
+Gemini 1.5 Pro,2024-02,4,2024-06,research,3.193,1686.0,1.612
+Llama 2 (open source),2023-07,-3,2023-04,news,17.667,53.0,1.06
+Llama 2 (open source),2023-07,-2,2023-05,news,28.333,85.0,1.7
+Llama 2 (open source),2023-07,-1,2023-06,news,16.667,50.0,1.0
+Llama 2 (open source),2023-07,0,2023-07,news,26.0,78.0,1.56
+Llama 2 (open source),2023-07,1,2023-08,news,17.667,53.0,1.06
+Llama 2 (open source),2023-07,2,2023-09,news,16.667,50.0,1.0
+Llama 2 (open source),2023-07,3,2023-10,news,20.333,61.0,1.22
+Llama 2 (open source),2023-07,4,2023-11,news,26.333,79.0,1.58
+Llama 2 (open source),2023-07,-3,2023-04,public,210.0,21.0,1.05
+Llama 2 (open source),2023-07,-2,2023-05,public,220.0,22.0,1.1
+Llama 2 (open source),2023-07,-1,2023-06,public,200.0,20.0,1.0
+Llama 2 (open source),2023-07,0,2023-07,public,160.0,16.0,0.8
+Llama 2 (open source),2023-07,1,2023-08,public,160.0,16.0,0.8
+Llama 2 (open source),2023-07,2,2023-09,public,210.0,21.0,1.05
+Llama 2 (open source),2023-07,3,2023-10,public,230.0,23.0,1.15
+Llama 2 (open source),2023-07,4,2023-11,public,240.0,24.0,1.2
+Llama 2 (open source),2023-07,-3,2023-04,research,1.365,721.0,0.777
+Llama 2 (open source),2023-07,-2,2023-05,research,1.877,991.0,1.069
+Llama 2 (open source),2023-07,-1,2023-06,research,1.756,927.0,1.0
+Llama 2 (open source),2023-07,0,2023-07,research,1.568,828.0,0.893
+Llama 2 (open source),2023-07,1,2023-08,research,1.881,993.0,1.071
+Llama 2 (open source),2023-07,2,2023-09,research,1.684,889.0,0.959
+Llama 2 (open source),2023-07,3,2023-10,research,2.492,1316.0,1.419
+Llama 2 (open source),2023-07,4,2023-11,research,2.269,1198.0,1.292

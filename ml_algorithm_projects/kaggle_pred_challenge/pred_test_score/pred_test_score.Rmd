@@ -1,0 +1,201 @@
+---
+title: "pred_student_test_score"
+output: html_document
+date: "2026-01-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary ( DUE FEB 1)
+
+## Data preparation 
+
+```{r load library}
+library(caret) 
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+print("Libraries loaded\n")
+
+```
+```{r load data }
+#1. Load dataset
+train = read.csv("train.csv")
+test = read.csv("test.csv")
+cat("Raw training data", nrow(train), "rows\n")
+cat("Raw test data", nrow(test), "rows\n")
+
+```
+
+```{r testing code snippet}
+#colnames - extracts name of the col as a vector of string
+#select() - conditional selection - look through every cols in train
+categorical_cols = colnames(
+    train %>%
+      select(where(is.character)| where(is.factor)) %>%
+      select(-any_of("exam_score"))
+  )
+categorical_cols
+
+```
+
+
+```{r helper function}
+#1. Model evaluation metric :rMSE
+
+calculate_rMSE = function(actual,predicted){
+  sqrt(mean((actual-predicted)^2))
+}
+
+#2. One-hot encode function 
+
+onehot_encode = function(data,target_col="exam_score", datasetname = "dataset"){
+  df = data
+  all_cols = setdiff(names(data),target_col)
+  
+  #get categorical cols - target col
+  categorical_cols = colnames(
+    data %>%
+      select(where(is.character)| where(is.factor)) %>%
+      select(-any_of(target_col))
+  )
+  #get numerical cols - target col
+  numercial_cols = setdiff(all_cols,categorical_cols)
+  #print result 
+  cat(sprintf("Total features ( excluding target): %d\n", length(all_cols)))
+  cat(sprintf(" Categorical: %d\n", length(categorical_cols)))
+  cat(sprintf(" Numerical: %d\n", length(numercial_cols)))
+  
+  #create dummy variables for categorical features
+  if(length(categorical_cols)>0){
+    cat("\nCreating onehot encoded features\n")
+    
+    dummy_formula = as.formula(paste("~", paste(categorical_cols, collapse = " + ")))
+    dummy_model = dummyVars(dummy_formula, data = df, fullRank = TRUE)
+    dummy_data = predict(dummy_model, newdata = df)
+    dummy_df = as.data.frame(dummy_data)
+    
+    cat(sprintf("Number of dummy variables created: %d\n", ncol(dummy_df)))
+    
+    #combine : dummy variables + numerical features + target 
+    if(target_col %in% names(df)){
+      df_final = cbind(dummy_df, df[,numercial_cols], df[,target_col,drop = FALSE])
+    } else {
+      df_final = cbind(dummy_df,df[,numercial_cols]) #test dataset 
+    }
+    } else {
+      #No categorical features 
+      cat("\n No encoding needed, using numerical features only\n")
+      if(target_col %in% names(df)) {
+            df_final = cbind(df[, numerical_cols], df[, target_col, drop = FALSE])
+        } else {
+            df_final = df[, numerical_cols]
+        }
+    }
+    cat(sprintf("\nFinal dataset dimensions: %d rows × %d columns\n", 
+                nrow(df_final), ncol(df_final)))
+    if(target_col %in% names(df_final)) {
+        cat(sprintf("Total features (excluding target): %d\n", ncol(df_final) - 1))
+    
+      #result 
+    result = list(
+      data = df_final,
+      dummy_model = if(length(categorical_cols)>0) dummy_model else NULL,
+      categorical_cols = categorical_cols,
+      numercial_cols = numercial_cols
+      
+    )
+    
+    return(result)
+      
+  }
+  
+  }
+
+cat("\nHelper function created\n")
+
+```
+
+```{r processing training data }
+
+train_clean = onehot_encode(
+  data = train,
+  target_col = "exam_score",
+  datasetname = "Training Data"
+)
+# Extract results
+train_encoded = train_clean$data
+dummy_model = train_clean$dummy_model
+categorical_cols = train_clean$categorical_cols
+numerical_cols = train_clean$numerical_cols
+cat("\nEncoded training data:", nrow(train_encoded), "rows ×", ncol(train_encoded), "columns\n")
+
+
+```
+```{r split data after encoding}
+# Split 70/30 train-validation
+set.seed(123)
+train_index = createDataPartition(train_encoded$exam_score, p = 0.7, list = FALSE) #
+
+train_data = train_encoded[train_index, ]
+validation_data = train_encoded[-train_index, ]
+cat("\nData split complete:\n")
+cat("Training set:", nrow(train_data), "rows ×", ncol(train_data), "columns\n")
+cat("Validation set:", nrow(validation_data), "rows ×", ncol(validation_data), "columns\n")
+
+
+```
+## Train Random Forest 
+
+```{r train random forest}
+
+install.packages("ranger")
+library(ranger)
+
+#1. process names of the cols - RF
+
+predictor_names = names(train_data)
+predictor_names = setdiff(predictor_names,"exam_score")
+safe_predictors = paste0("`", predictor_names, "`")
+formula_rf = paste(safe_predictors, collapse = " + ") 
+safe_rf_formula = as.formula(paste("exam_score ~ ", formula_rf))
+
+#2. set up train control
+train_control_rftunned = trainControl(
+    method = "cv", 
+    number = 5,
+    verboseIter = TRUE )
+ 
+# Train RF model 
+set.seed(123)
+model_rf_tuned = train(
+      safe_rf_formula,
+      data = train_data,
+      method = "ranger",
+      metric = "RMSE",
+      trControl = train_control_rftunned,
+      num.tree = 250,
+      importance = "impurity",
+      tuneGrid = expand.grid(
+        mtry = c(5,10,15,20,25,30),
+        splitrule = "variance",
+        min.node.size = c(5)
+      )
+      )
+      
+cat("\nTuning complete\n")
+print(model_rf_tuned)
+# Get best mtry
+best_mtry = model_rf_tuned$bestTune$mtry
+cat("\nBest mtry:", best_mtry, "\n")
+# Extract results for all mtry values
+results_mtry = model_rf_tuned$results
+cat("\nAll tuning results:\n")
+print(results_mtry)
+
+
+
+```

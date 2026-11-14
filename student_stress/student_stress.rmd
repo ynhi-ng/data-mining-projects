@@ -1,0 +1,1815 @@
+---
+title: "Student Stress — Analysis Report"
+author: "Nhi Nguyen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: haddock
+  pdf_document:
+    toc: true
+---
+### File set up
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 5)
+```
+
+### Abstract 
+
+This report is demonstrating the solution ...
+
+```{r loading the library}
+#Load library 
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(tm)
+library(readxl)
+cat("Library set up successfully\n")
+```
+
+
+```{r}
+
+#1.Load the dataset
+stress_survey_data = read_csv("student_stress.csv")
+cat("Dataset loaded successfully\n")
+
+uk_student_data = read_excel("uk_student_survey2020.xlsx")
+cat("Excel file loaded successfully")
+
+```
+
+### Dataset information 
+
+1. Stress_survet_data provides a rich multi-facet insight into students' stress level and how  they employ various mean to manage stress. 
+
+```{r}
+
+#Display dataset information 
+
+cat("Student stress survey dimension:",nrow(stress_survey_data),"rows x", ncol(stress_survey_data), "columns\n")
+cat("Student stress survey - Total observations:", nrow(stress_survey_data),"\n")
+cat("Student stress survey- Total variables:", ncol(stress_survey_data),"\n")
+
+cat("UK Student Data dimension:",nrow(uk_student_data),"rows x", ncol(uk_student_data), "columns\n")
+cat("UK Student Data - Total observations:", nrow(uk_student_data),"\n")
+cat("UK Student Data- Total variables:", ncol(uk_student_data),"\n")
+
+```
+```{r}
+
+#Descriptive Stats 
+head(stress_survey_data,5)
+
+
+
+```
+```{r cleaning columns name}
+colnames(stress_survey_data) = colnames(stress_survey_data) %>%
+  tolower() %>%
+  str_replace_all(" ", "_") %>%                    # Spaces to underscores
+  str_replace_all("\\(|\\)", "") %>%               # Remove parentheses
+  str_replace_all("-", "_") %>%                    # Hyphens to underscores
+  str_replace_all("__+", "_") %>%                  # Multiple underscores to single
+  str_remove("_$")           
+
+colnames(stress_survey_data)
+
+```
+```{r data quality check}
+#1.missing value
+missing_summary = stress_survey_data %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "missing_count") %>%
+  mutate(missing_percent = (missing_count / nrow(stress_survey_data)) * 100)
+
+missing_summary
+
+#2.check duplicated
+duplicated_check = stress_survey_data %>%
+  group_by(student_id)%>%
+  filter(n() >1)
+
+cat("Number of duplicated student IDs:", nrow(duplicated_check),"\n")
+
+#3.check value ranges 
+numeric_ranges = stress_survey_data %>%
+  select(where(is.numeric), -student_id) %>%
+  summarise(across(everything(), list(
+    min = ~min(., na.rm = TRUE),
+    max = ~max(., na.rm = TRUE),
+    mean = ~mean(., na.rm = TRUE),
+    median = ~median(., na.rm = TRUE)
+  )))
+
+numeric_ranges
+
+#4.check unique values 
+cat("\nUnique values for Coping Mechanisms:\n")
+table(stress_survey_data$stress_coping_mechanisms)
+
+cat("\nUnique values for Gender:\n")
+table(stress_survey_data$gender)
+
+cat("\nUnique values for Counseling Attendance:\n")
+table(stress_survey_data$counseling_attendance)
+
+cat("\nUnique values for Family Mental Health History:\n")
+table(stress_survey_data$family_mental_health_history)
+
+cat("\nUnique values for Medical Condition:\n")
+table(stress_survey_data$medical_condition)
+
+```
+```{r data type conversion}
+
+stress_survey_data = stress_survey_data %>%
+  mutate(
+    gender = as.factor(gender),
+    stress_coping_mechanisms = as.factor(stress_coping_mechanisms),
+    
+    # Binary variables (adjust based on your actual coding)
+    counseling_attendance = as.factor(counseling_attendance),
+    family_mental_health_history = as.factor(family_mental_health_history),
+    medical_condition = as.factor(medical_condition),
+    
+    # Ensure numeric variables are numeric
+    age = as.numeric(age),
+    academic_performance_gpa = as.numeric(academic_performance_gpa),
+    study_hours_per_week = as.numeric(study_hours_per_week),
+    social_media_usage_hours_per_day = as.numeric(social_media_usage_hours_per_day),
+    sleep_duration_hours_per_night = as.numeric(sleep_duration_hours_per_night),
+    physical_exercise_hours_per_week = as.numeric(physical_exercise_hours_per_week),
+    family_support = as.numeric(family_support),
+    financial_stress = as.numeric(financial_stress),
+    peer_pressure = as.numeric(peer_pressure),
+    relationship_stress = as.numeric(relationship_stress),
+    mental_stress_level = as.numeric(mental_stress_level),
+    diet_quality = as.numeric(diet_quality),
+    cognitive_distortions = as.numeric(cognitive_distortions),
+    substance_use = as.numeric(substance_use)
+  )
+
+str(stress_survey_data)
+
+```
+
+```{r EDA : Univariate - Target variable}
+
+#descriptive statistics 
+stress_level_stats = stress_survey_data %>%
+  summarise(
+    mean = mean(mental_stress_level, na.rm = TRUE),
+    median = median(mental_stress_level, na.rm = TRUE),
+    sd = sd(mental_stress_level, na.rm = TRUE),
+    min = min(mental_stress_level, na.rm = TRUE),
+    max = max(mental_stress_level, na.rm = TRUE),
+    q25 = quantile(mental_stress_level, 0.25, na.rm = TRUE),
+    q75 = quantile(mental_stress_level, 0.75, na.rm = TRUE)
+  )
+
+stress_level_stats
+
+#distribution plot
+ggplot(stress_survey_data, aes(x = mental_stress_level)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean(mental_stress_level)), 
+             color = "red", linetype = "dashed", size = 1) +
+  labs(title = "Distribution of Mental Stress Level",
+       x = "Mental Stress Level (1-10)",
+       y = "Frequency") +
+  theme_minimal()
+
+#box plot
+ggplot(stress_survey_data, aes(y = mental_stress_level)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(title = "Boxplot of Mental Stress Level",
+       y = "Mental Stress Level (1-10)") +
+  theme_minimal()
+
+
+
+```
+```{r EDA : Numeric  }
+
+numeric_vars = stress_survey_data %>%
+  select(where(is.numeric), -student_id) %>%
+  names()
+
+
+stress_survey_data %>%
+  select(all_of(numeric_vars)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = "steelblue", color = "black", alpha = 0.7, bins = 20) +
+  facet_wrap(~variable, scales = "free") +
+  labs(title = "Distribution of All Numeric Variables",
+       x = "Value",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 8))
+
+# Boxplots to identify outliers
+stress_survey_data %>%
+  select(all_of(numeric_vars)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = variable, y = value)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  facet_wrap(~variable, scales = "free", ncol = 4) +
+  labs(title = "Boxplots of All Numeric Variables",
+       x = "",
+       y = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+
+```
+```{r EDA: Categorical Variable}
+
+# Gender distribution
+gender_table = table(stress_survey_data$gender)
+prop.table(gender_table) * 100  # Percentages
+
+ggplot(stress_survey_data, aes(x = gender, fill = gender)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5) +
+  labs(title = "Gender Distribution",
+       x = "Gender",
+       y = "Count") +
+  theme_minimal()
+
+# Coping Mechanisms distribution
+coping_table = table(stress_survey_data$stress_coping_mechanisms)
+coping_df = as.data.frame(coping_table) %>%
+  arrange(desc(Freq))
+
+ggplot(coping_df, aes(x = reorder(Var1, Freq), y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Freq), hjust = -0.2) +
+  coord_flip() +
+  labs(title = "Distribution of Stress Coping Mechanisms",
+       x = "Coping Mechanism",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Binary variables
+binary_vars <- c("counseling_attendance", "family_mental_health_history", "medical_condition")
+
+stress_survey_data %>%
+  select(all_of(binary_vars)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  count(variable, value) %>%
+  ggplot(aes(x = value, y = n, fill = value)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = -0.5) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "Distribution of Binary Variables",
+       x = "",
+       y = "Count") +
+  theme_minimal()
+
+```
+```{r EDA stress vs. continuous variable}
+
+# Correlation analysis
+numeric_df = stress_survey_data %>%
+  select(where(is.numeric), -student_id)
+
+correlation_matrix <- cor(numeric_df, use = "complete.obs")
+
+# Extract correlations with mental_stress_level
+stress_correlations = correlation_matrix["mental_stress_level", ] %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  rename(correlation = 2) %>%
+  filter(variable != "mental_stress_level") %>%
+  arrange(desc(abs(correlation)))
+
+print(stress_correlations)
+
+# Visualize correlations with mental stress level
+ggplot(stress_correlations, aes(x = reorder(variable, correlation), y = correlation, 
+                                 fill = correlation > 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_manual(values = c("red", "steelblue")) +
+  labs(title = "Correlation of Variables with Mental Stress Level",
+       x = "Variable",
+       y = "Correlation Coefficient") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+#heatmap
+install.packages("corrplot")
+library(corrplot)
+corrplot(correlation_matrix, method = "color", type = "upper", 
+          tl.col = "black", tl.srt = 45, tl.cex = 0.7)
+
+# Scatter plots for top correlated variables
+top_vars = stress_correlations %>%
+  slice_max(abs(correlation), n = 6) %>%
+  pull(variable)
+
+stress_survey_data %>%
+  select(mental_stress_level, all_of(top_vars)) %>%
+  pivot_longer(-mental_stress_level, names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value, y = mental_stress_level)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "Mental Stress Level vs. Top Correlated Variables",
+       x = "Variable Value",
+       y = "Mental Stress Level") +
+  theme_minimal()
+
+```
+```{r stress vs. categorical variable}
+# Mental Stress by Gender
+stress_survey_data %>%
+  group_by(gender) %>%
+  summarise(
+    mean_stress = mean(mental_stress_level, na.rm = TRUE),
+    median_stress = median(mental_stress_level, na.rm = TRUE),
+    sd_stress = sd(mental_stress_level, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(stress_survey_data, aes(x = gender, y = mental_stress_level, fill = gender)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(alpha = 0.2, width = 0.2) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "red") +
+  labs(title = "Mental Stress Level by Gender",
+       x = "Gender",
+       y = "Mental Stress Level") +
+  theme_minimal()
+
+# T-test for gender differences
+#t.test(mental_stress_level ~ gender, data = stress_survey_data)
+
+# Mental Stress by Coping Mechanism
+coping_stress <- stress_survey_data %>%
+  group_by(stress_coping_mechanisms) %>%
+  summarise(
+    mean_stress = mean(mental_stress_level, na.rm = TRUE),
+    median_stress = median(mental_stress_level, na.rm = TRUE),
+    sd_stress = sd(mental_stress_level, na.rm = TRUE),
+    n = n()
+  ) %>%
+  arrange(mean_stress)
+
+print(coping_stress)
+
+ggplot(stress_survey_data, aes(x = reorder(stress_coping_mechanisms, mental_stress_level, FUN = mean), 
+               y = mental_stress_level, 
+               fill = stress_coping_mechanisms)) +
+  geom_boxplot(alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "red") +
+  coord_flip() +
+  labs(title = "Mental Stress Level by Coping Mechanism",
+       subtitle = "Red diamond = mean",
+       x = "Coping Mechanism",
+       y = "Mental Stress Level") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# ANOVA test for coping mechanisms
+anova_result = aov(mental_stress_level ~ stress_coping_mechanisms, data = stress_survey_data)
+summary(anova_result)
+
+# Post-hoc test if ANOVA is significant
+# TukeyHSD(anova_result)
+
+# Mental Stress by Binary Variables
+stress_survey_data %>%
+  select(mental_stress_level, counseling_attendance, 
+         family_mental_health_history, medical_condition) %>%
+  pivot_longer(-mental_stress_level, names_to = "variable", values_to = "category") %>%
+  ggplot(aes(x = category, y = mental_stress_level, fill = category)) +
+  geom_boxplot(alpha = 0.7) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "Mental Stress Level by Binary Variables",
+       x = "",
+       y = "Mental Stress Level") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+```{r  stress profile}
+# Create stress categories
+stress_survey_data = stress_survey_data %>%
+  mutate(stress_category = case_when(
+    mental_stress_level <= 3 ~ "Low",
+    mental_stress_level <= 6 ~ "Medium",
+    mental_stress_level <= 10 ~ "High"
+  ) %>% factor(levels = c("Low", "Medium", "High")))
+
+# Distribution of stress categories
+table(stress_survey_data$stress_category)
+prop.table(table(stress_survey_data$stress_category)) * 100
+
+# Visualize
+ggplot(stress_survey_data, aes(x = stress_category, fill = stress_category)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5) +
+  scale_fill_manual(values = c("Low" = "green", "Medium" = "orange", "High" = "red")) +
+  labs(title = "Distribution of Stress Categories",
+       x = "Stress Category",
+       y = "Count") +
+  theme_minimal()
+
+
+
+```
+```{r profile each stress category}
+# Numeric variables profile
+numeric_profile = stress_survey_data %>%
+  group_by(stress_category) %>%
+  summarise(across(where(is.numeric) & !student_id, 
+                   list(mean = ~mean(., na.rm = TRUE),
+                        sd = ~sd(., na.rm = TRUE)),
+                   .names = "{.col}_{.fn}"))
+
+print(numeric_profile)
+
+# Categorical variables profile
+# Gender distribution by stress
+gender_by_stress = stress_survey_data %>%
+  count(stress_category, gender) %>%
+  group_by(stress_category) %>%
+  mutate(prop = n / sum(n) * 100)
+
+ggplot(gender_by_stress, aes(x = stress_category, y = prop, fill = gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = sprintf("%.1f%%", prop)), 
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "Gender Distribution by Stress Category",
+       x = "Stress Category",
+       y = "Percentage (%)") +
+  theme_minimal()
+
+# Coping mechanisms by stress category
+coping_by_stress <- stress_survey_data %>%
+  count(stress_category, stress_coping_mechanisms) %>%
+  group_by(stress_category) %>%
+  mutate(prop = n / sum(n) * 100)
+
+ggplot(coping_by_stress, aes(x = stress_category, y = prop, 
+                              fill = stress_coping_mechanisms)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Coping Mechanisms by Stress Category",
+       x = "Stress Category",
+       y = "Percentage (%)",
+       fill = "Coping Mechanism") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+```
+```{r association rule mining}
+
+install.packages("arules")
+install.packages("arulesViz")
+
+library(arules)
+
+df_discretized = stress_survey_data %>%
+  mutate(
+    age_group = cut(age, breaks = c(17, 20, 23, 30), 
+                    labels = c("18-20", "21-23", "24+"),
+                    include.lowest = TRUE),
+    gpa_level = cut(academic_performance_gpa, breaks = quantile(academic_performance_gpa, probs = c(0, 0.33, 0.67, 1)), #to get 0
+                    labels = c("Low_GPA", "Medium_GPA", "High_GPA"), include.lowest = TRUE),
+    study_hours = cut(study_hours_per_week, breaks = c(-0.01, 10, 20, 50), 
+                      labels = c("Low_Study", "Medium_Study", "High_Study")),
+    social_media = cut(social_media_usage_hours_per_day, breaks = c(-0.01, 2, 5, 24), 
+                       labels = c("Low_SocialMedia", "Medium_SocialMedia", "High_SocialMedia")),
+    sleep_quality = cut(sleep_duration_hours_per_night, breaks = c(-0.01, 6, 8, 12), 
+                        labels = c("Poor_Sleep", "Good_Sleep", "Excellent_Sleep")),
+    exercise_level = cut(physical_exercise_hours_per_week, breaks = c(-0.01, 2, 5, 20), 
+                         labels = c("Low_Exercise", "Medium_Exercise", "High_Exercise")),
+    family_support_level = cut(family_support, breaks = c(0, 2, 4, 5), 
+                               labels = c("Low_Support", "Medium_Support", "High_Support")),
+    financial_stress_level = cut(financial_stress, breaks = c(0, 2, 4, 5), 
+                                  labels = c("Low_FinStress", "Medium_FinStress", "High_FinStress")),
+    peer_pressure_level = cut(peer_pressure, breaks = c(0, 2, 4, 5), 
+                              labels = c("Low_PeerPress", "Medium_PeerPress", "High_PeerPress")),
+    relationship_stress_level = cut(relationship_stress, breaks = c(0, 2, 4, 5), 
+                                    labels = c("Low_RelStress", "Medium_RelStress", "High_RelStress")),
+    diet_level = cut(diet_quality, breaks = c(0, 2, 4, 5), 
+                     labels = c("Poor_Diet", "Medium_Diet", "Good_Diet")),
+    cognitive_distortions_level = cut(cognitive_distortions, breaks = c(0, 2, 4, 5), 
+                                       labels = c("Low_CogDist", "Medium_CogDist", "High_CogDist")),
+    substance_use_level = cut(substance_use, breaks = c(0, 1, 3, 5), 
+                              labels = c("No_Substance", "Low_Substance", "High_Substance"))
+  )
+# Verify no NAs were created
+colSums(is.na(df_discretized))
+
+# Select relevant columns for association rules
+df_for_rules = df_discretized %>%
+  select(stress_category, stress_coping_mechanisms, age_group, gender,
+         gpa_level, study_hours, social_media, sleep_quality, exercise_level,
+         family_support_level, financial_stress_level, peer_pressure_level,
+         relationship_stress_level, diet_level, cognitive_distortions_level,
+         substance_use_level, counseling_attendance, family_mental_health_history,
+         medical_condition)
+
+# Convert to transaction format
+transactions = as(df_for_rules, "transactions")
+
+# Inspect transactions
+summary(transactions)
+inspect(head(transactions, 3))
+
+```
+```{r }
+
+stress_rules = apriori(transactions,
+                        parameter = list(supp = 0.005,  # Lower support threshold
+                                       conf = 0.3,      # Lower confidence
+                                       minlen = 2, 
+                                       maxlen = 5),
+                        appearance = list(
+                          lhs = c("stress_category=Low",
+                                  "stress_category=Medium",
+                                  "stress_category=High"),
+                          rhs = c("stress_coping_mechanisms=Exercise",
+                                  "stress_coping_mechanisms=Meditation",
+                                  "stress_coping_mechanisms=Reading",
+                                  "stress_coping_mechanisms=Social Media Engagement",
+                                  "stress_coping_mechanisms=Spending Time Alone",
+                                  "stress_coping_mechanisms=Talking to Friends",
+                                  "stress_coping_mechanisms=Travelling",
+                                  "stress_coping_mechanisms=Walking or Nature Walks",
+                                  "stress_coping_mechanisms=Watching Sports",
+                                  "stress_coping_mechanisms=Yoga"),
+                          default = "lhs"  # ⭐ CHANGED: Allow other items on LHS
+                        ),
+                        control = list(verbose = FALSE))
+
+# Check how many rules
+length(stress_rules)
+
+# Inspect
+stress_rules_sorted <- sort(stress_rules, by = "confidence", decreasing = TRUE)
+inspect(head(stress_rules_sorted, 20))
+
+stress_rules_df <- as(stress_rules_sorted, "data.frame")
+head(stress_rules_df, 10)
+
+```
+```{r rules for stress levels}
+# Rules: Stress + Other Factors → Coping Mechanism
+stress_rules = apriori(transactions,
+                        parameter = list(supp = 0.01, conf = 0.4, minlen = 2, maxlen = 5),
+                        appearance = list(lhs = c("stress_category=Low",
+                                                  "stress_category=Medium",
+                                                  "stress_category=High"),
+                                          rhs = c("stress_coping_mechanisms=Exercise",
+                                                  "stress_coping_mechanisms=Meditation",
+                                                  "stress_coping_mechanisms=Reading",
+                                                  "stress_coping_mechanisms=Social Media Engagement",
+                                                  "stress_coping_mechanisms=Spending Time Alone",
+                                                  "stress_coping_mechanisms=Talking to Friends",
+                                                  "stress_coping_mechanisms=Travelling",
+                                                  "stress_coping_mechanisms=Walking or Nature Walks",
+                                                  "stress_coping_mechanisms=Watching Sports",
+                                                  "stress_coping_mechanisms=Yoga"),
+                                          default = "none"),
+                        control = list(verbose = FALSE))
+
+# Inspect
+stress_rules_sorted = sort(stress_rules, by = "confidence", decreasing = TRUE)
+inspect(stress_rules_sorted)
+
+# Convert to dataframe
+stress_rules_df = as(stress_rules_sorted, "data.frame")
+
+head(stress_rules_df,3)
+
+```
+```{r }
+# View full rules with actual coping mechanism names
+inspect(head(stress_rules_sorted, 20))
+
+# Or extract the RHS (right-hand side)
+stress_rules_df <- as(stress_rules_sorted, "data.frame")
+
+stress_rules_df <- stress_rules_df %>%
+  mutate(
+    # Extract just the coping mechanism from RHS
+    coping_mechanism = str_extract(rules, "stress_coping_mechanisms=([^}]+)"),
+    coping_mechanism = str_remove(coping_mechanism, "stress_coping_mechanisms=")
+  )
+
+# View rules by coping mechanism
+stress_rules_df %>%
+  select(rules, coping_mechanism, support, confidence, lift, count) %>%
+  arrange(desc(lift)) %>%
+  head(20)
+
+# Count which coping mechanisms appear most in high-lift rules
+table(stress_rules_df$coping_mechanism[stress_rules_df$lift > 7])
+
+
+
+```
+### Build Multiple Regression Modeling 
+
+```{r prepare data and build initial model}
+install.packages("car")
+library(car)        # For VIF (multicollinearity check)
+library(caret)      # For model evaluation
+
+set.seed(123)
+
+# 1. Data preparation 
+
+# Create train/test split (80/20)
+train_index <- sample(1:nrow(stress_survey_data), 0.8 * nrow(stress_survey_data))
+train_data <- stress_survey_data[train_index, ]
+test_data <- stress_survey_data[-train_index, ]
+
+cat("Training set size:", nrow(train_data), "\n")
+cat("Testing set size:", nrow(test_data), "\n")
+
+# Check class balance in train/test
+cat("\nStress distribution in training set:\n")
+table(train_data$stress_category)
+cat("\nStress distribution in test set:\n")
+table(test_data$stress_category)
+
+
+
+```
+```{r buid regression model}
+
+model_full <- lm(mental_stress_level ~ 
+                   age + 
+                   gender + 
+                   academic_performance_gpa + 
+                   study_hours_per_week + 
+                   social_media_usage_hours_per_day +
+                   sleep_duration_hours_per_night + 
+                   physical_exercise_hours_per_week +
+                   family_support + 
+                   financial_stress + 
+                   peer_pressure +
+                   relationship_stress + 
+                   diet_quality + 
+                   cognitive_distortions +
+                   substance_use + 
+                   counseling_attendance + 
+                   family_mental_health_history + 
+                   medical_condition +
+                   stress_coping_mechanisms,
+                 data = train_data)
+
+# Summary
+cat("\n========== FULL MODEL SUMMARY ==========\n")
+summary(model_full)
+
+# Extract significant predictors (p < 0.05)
+cat("\n========== SIGNIFICANT PREDICTORS (p < 0.05) ==========\n")
+sig_predictors <- summary(model_full)$coefficients[summary(model_full)$coefficients[,4] < 0.05, ]
+print(sig_predictors)
+
+```
+```{r Check Model Assumption}
+
+# 1. Diagnostic plots
+par(mfrow = c(2, 2))
+plot(model_full, main = "Full Model Diagnostics")
+par(mfrow = c(1, 1))
+
+# 2. Check for multicollinearity (VIF)
+cat("\nVariance Inflation Factors (VIF):\n")
+cat("(VIF > 10 indicates high multicollinearity)\n\n")
+
+# Calculate VIF for numeric predictors only
+vif_values <- vif(model_full)
+print(vif_values)
+
+# Identify problematic variables
+high_vif <- vif_values[vif_values > 10]
+if (length(high_vif) > 0) {
+  cat("\n⚠️ HIGH MULTICOLLINEARITY detected in:\n")
+  print(high_vif)
+} else {
+  cat("\n✅ No severe multicollinearity detected\n")
+}
+
+# 3. Test for normality of residuals
+shapiro_test <- shapiro.test(residuals(model_full))
+cat("\nShapiro-Wilk test for normality of residuals:\n")
+cat("p-value:", shapiro_test$p.value, "\n")
+if (shapiro_test$p.value < 0.05) {
+  cat("⚠️ Residuals may not be normally distributed\n")
+} else {
+  cat("✅ Residuals appear normally distributed\n")
+}
+
+# ==========================================
+# STEP 5.4: STEPWISE REGRESSION
+# ==========================================
+
+cat("\n========== STEPWISE VARIABLE SELECTION ==========\n")
+
+# Perform stepwise selection (both directions)
+model_step <- step(model_full, direction = "both", trace = 0)
+
+cat("\nStepwise Model Summary:\n")
+summary(model_step)
+
+# Compare full vs stepwise model
+cat("\n========== MODEL COMPARISON ==========\n")
+anova(model_step, model_full)
+
+# Extract final predictors in stepwise model
+final_predictors <- names(coef(model_step))[-1]  # Remove intercept
+cat("\nFinal predictors selected:\n")
+print(final_predictors)
+
+# ==========================================
+# STEP 5.5: MODEL PERFORMANCE ON TEST SET
+# ==========================================
+
+cat("\n========== MODEL PERFORMANCE ==========\n")
+
+# Predictions on test set - Full model
+predictions_full <- predict(model_full, newdata = test_data)
+
+# Predictions on test set - Stepwise model
+predictions_step <- predict(model_step, newdata = test_data)
+
+# Calculate performance metrics
+evaluate_model <- function(actual, predicted, model_name) {
+  rmse <- sqrt(mean((actual - predicted)^2, na.rm = TRUE))
+  mae <- mean(abs(actual - predicted), na.rm = TRUE)
+  r_squared <- cor(actual, predicted, use = "complete.obs")^2
+  
+  cat("\n", model_name, "Performance:\n")
+  cat("  RMSE:", round(rmse, 3), "\n")
+  cat("  MAE:", round(mae, 3), "\n")
+  cat("  R-squared:", round(r_squared, 3), "\n")
+  
+  return(list(rmse = rmse, mae = mae, r_squared = r_squared))
+}
+
+perf_full <- evaluate_model(test_data$mental_stress_level, predictions_full, "Full Model")
+perf_step <- evaluate_model(test_data$mental_stress_level, predictions_step, "Stepwise Model")
+
+
+
+
+```
+```{r visualize prediction}
+
+# Actual vs Predicted - Stepwise Model (better model)
+plot_data <- data.frame(
+  actual = test_data$mental_stress_level,
+  predicted = predictions_step,
+  residual = test_data$mental_stress_level - predictions_step
+)
+
+# Scatter plot
+p1 <- ggplot(plot_data, aes(x = actual, y = predicted)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed", size = 1) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(title = "Actual vs Predicted Mental Stress Level",
+       subtitle = paste("R² =", round(perf_step$r_squared, 3), 
+                       "| RMSE =", round(perf_step$rmse, 3)),
+       x = "Actual Stress Level",
+       y = "Predicted Stress Level") +
+  theme_minimal() +
+  coord_fixed(ratio = 1)
+
+print(p1)
+
+# Residual plot
+p2 <- ggplot(plot_data, aes(x = predicted, y = residual)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  geom_smooth(se = TRUE, color = "blue") +
+  labs(title = "Residual Plot",
+       x = "Predicted Stress Level",
+       y = "Residuals") +
+  theme_minimal()
+
+print(p2)
+
+# Distribution of residuals
+p3 <- ggplot(plot_data, aes(x = residual)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Distribution of Residuals",
+       x = "Residual",
+       y = "Frequency") +
+  theme_minimal()
+
+print(p3)
+
+
+```
+
+```{r analyzing feature}
+
+
+cat("\n========== FEATURE IMPORTANCE ==========\n")
+
+# Extract standardized coefficients for comparison
+standardized_coef <- function(model) {
+  # Get coefficients
+  coefs <- coef(model)[-1]  # Remove intercept
+  
+  # Get predictor names
+  pred_names <- names(coefs)
+  
+  # Standardize by absolute value
+  importance <- abs(coefs)
+  
+  # Create dataframe
+  importance_df <- data.frame(
+    predictor = pred_names,
+    coefficient = coefs,
+    abs_coefficient = importance
+  ) %>%
+    arrange(desc(abs_coefficient))
+  
+  return(importance_df)
+}
+
+importance_step <- standardized_coef(model_step)
+cat("\nTop 10 Most Important Predictors (by absolute coefficient):\n")
+print(head(importance_step, 10))
+
+# Visualize feature importance
+importance_step_top <- head(importance_step, 15)
+
+ggplot(importance_step_top, aes(x = reorder(predictor, abs_coefficient), 
+                                 y = abs_coefficient,
+                                 fill = coefficient > 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_manual(values = c("red", "steelblue"),
+                    labels = c("Negative", "Positive"),
+                    name = "Effect") +
+  labs(title = "Feature Importance in Predicting Mental Stress",
+       subtitle = "Top 15 predictors from stepwise regression",
+       x = "Predictor",
+       y = "Absolute Coefficient Value") +
+  theme_minimal()
+
+# ==========================================
+# STEP 5.8: ANALYZE COPING MECHANISM EFFECTS
+# ==========================================
+
+cat("\n========== COPING MECHANISM EFFECTS ==========\n")
+
+# Extract coping mechanism coefficients from model
+coping_coefs <- coef(model_step)[grep("stress_coping_mechanisms", names(coef(model_step)))]
+
+if (length(coping_coefs) > 0) {
+  coping_effects <- data.frame(
+    mechanism = gsub("stress_coping_mechanisms", "", names(coping_coefs)),
+    coefficient = coping_coefs,
+    effect = ifelse(coping_coefs < 0, "Reduces Stress", "Increases Stress")
+  ) %>%
+    arrange(coefficient)
+  
+  cat("\nCoping Mechanism Effects on Stress (relative to reference category):\n")
+  print(coping_effects)
+  
+  # Visualize
+  ggplot(coping_effects, aes(x = reorder(mechanism, coefficient), 
+                              y = coefficient,
+                              fill = effect)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    scale_fill_manual(values = c("Reduces Stress" = "green", 
+                                  "Increases Stress" = "red")) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(title = "Effect of Coping Mechanisms on Mental Stress",
+         subtitle = "Negative coefficient = reduces stress (better)",
+         x = "Coping Mechanism",
+         y = "Coefficient (Effect on Stress Level)") +
+    theme_minimal()
+} else {
+  cat("⚠️ Coping mechanisms were not retained in the stepwise model\n")
+  cat("This suggests coping mechanisms don't have strong predictive power\n")
+  cat("after controlling for other variables (likely due to reverse causality)\n")
+}
+
+
+
+```
+```{r Random forest }
+install.packages("randomForest")
+library(randomForest)
+cat("\n========== RANDOM FOREST MODEL ==========\n")
+
+# Prepare data - remove student_id
+train_rf <- train_data %>% select(-student_id)
+test_rf <- test_data %>% select(-student_id)
+
+# Build random forest
+rf_model <- randomForest(mental_stress_level ~ ., 
+                         data = train_rf,
+                         ntree = 500,
+                         importance = TRUE,
+                         na.action = na.omit)
+
+print(rf_model)
+
+# Feature importance
+importance_rf <- importance(rf_model)
+importance_rf_df <- data.frame(
+  predictor = rownames(importance_rf),
+  importance = importance_rf[, "%IncMSE"]
+) %>%
+  arrange(desc(importance)) %>%
+  head(15)
+
+cat("\nTop 15 Most Important Features (Random Forest):\n")
+print(importance_rf_df)
+
+# Visualize
+ggplot(importance_rf_df, aes(x = reorder(predictor, importance), y = importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Feature Importance - Random Forest",
+       x = "Predictor",
+       y = "Importance (% Increase in MSE)") +
+  theme_minimal()
+
+# Predictions
+predictions_rf <- predict(rf_model, newdata = test_rf)
+perf_rf <- evaluate_model(test_data$mental_stress_level, predictions_rf, "Random Forest")
+
+# Compare all models
+cat("\n========== MODEL COMPARISON SUMMARY ==========\n")
+comparison <- data.frame(
+  Model = c("Full Regression", "Stepwise Regression", "Random Forest"),
+  RMSE = c(perf_full$rmse, perf_step$rmse, perf_rf$rmse),
+  MAE = c(perf_full$mae, perf_step$mae, perf_rf$mae),
+  R_squared = c(perf_full$r_squared, perf_step$r_squared, perf_rf$r_squared)
+) %>%
+  arrange(RMSE)
+
+print(comparison)
+
+# Determine best model
+best_model_idx <- which.min(comparison$RMSE)
+cat("\n✅ Best model:", comparison$Model[best_model_idx], "\n")
+
+
+
+```
+
+```{r recommendation engine}
+
+# ==========================================
+# PART C: RECOMMENDATION ENGINE
+# ==========================================
+
+recommend_coping_strategies_CORRECTED <- function(student_profile, 
+                                                   stress_rules_df,  # YOUR mined rules
+                                                   model_step,
+                                                   top_n = 3) {
+  #' Generate personalized coping recommendations
+  #' 
+  #' @param student_profile: Single row dataframe with student data
+  #' @param stress_rules_df: YOUR association rules from mining (with 'rules' and 'coping_mechanism' columns)
+  #' @param model_step: Your trained regression model
+  #' @param top_n: Number of recommendations to return
+  #' 
+  #' @return: Recommendations with rationale
+  
+  cat("\n========================================\n")
+  cat("ADAPTIVE STRESS-COPING RECOMMENDATION\n")
+  cat("========================================\n\n")
+  
+  # -----------------------------------
+  # STEP 1: PREDICT STRESS LEVEL
+  # -----------------------------------
+  
+  predicted_stress <- predict(model_step, newdata = student_profile)
+  
+  stress_category <- case_when(
+    predicted_stress <= 3 ~ "Low",
+    predicted_stress <= 6 ~ "Medium",
+    predicted_stress <= 10 ~ "High"
+  )
+  
+  cat("STUDENT PROFILE ANALYSIS\n")
+  cat("------------------------\n")
+  cat("Predicted Mental Stress Level:", round(predicted_stress, 2), "/10\n")
+  cat("Stress Category:", stress_category, "\n\n")
+  
+  # -----------------------------------
+  # STEP 2: CREATE DISCRETIZED PROFILE FOR RULE MATCHING
+  # -----------------------------------
+  
+  # This matches the discretization used in YOUR rule mining
+  student_discrete <- data.frame(
+    age_group = as.character(cut(student_profile$age, 
+                                  breaks = c(17, 20, 23, 30), 
+                                  labels = c("18-20", "21-23", "24+"), 
+                                  include.lowest = TRUE)),
+    
+    gender = as.character(student_profile$gender),
+    
+    gpa_level = case_when(
+      student_profile$academic_performance_gpa <= 1.33 ~ "Low_GPA",
+      student_profile$academic_performance_gpa <= 2.67 ~ "Medium_GPA",
+      TRUE ~ "High_GPA"
+    ),
+    
+    study_hours = case_when(
+      student_profile$study_hours_per_week <= 10 ~ "Low_Study",
+      student_profile$study_hours_per_week <= 20 ~ "Medium_Study",
+      TRUE ~ "High_Study"
+    ),
+    
+    social_media = case_when(
+      student_profile$social_media_usage_hours_per_day <= 2 ~ "Low_SocialMedia",
+      student_profile$social_media_usage_hours_per_day <= 5 ~ "Medium_SocialMedia",
+      TRUE ~ "High_SocialMedia"
+    ),
+    
+    sleep_quality = case_when(
+      student_profile$sleep_duration_hours_per_night < 6 ~ "Poor_Sleep",
+      student_profile$sleep_duration_hours_per_night <= 8 ~ "Good_Sleep",
+      TRUE ~ "Excellent_Sleep"
+    ),
+    
+    exercise_level = case_when(
+      student_profile$physical_exercise_hours_per_week <= 2 ~ "Low_Exercise",
+      student_profile$physical_exercise_hours_per_week <= 5 ~ "Medium_Exercise",
+      TRUE ~ "High_Exercise"
+    ),
+    
+    family_support_level = case_when(
+      student_profile$family_support <= 2 ~ "Low_Support",
+      student_profile$family_support <= 4 ~ "Medium_Support",
+      TRUE ~ "High_Support"
+    ),
+    
+    financial_stress_level = case_when(
+      student_profile$financial_stress <= 2 ~ "Low_FinStress",
+      student_profile$financial_stress <= 4 ~ "Medium_FinStress",
+      TRUE ~ "High_FinStress"
+    ),
+    
+    peer_pressure_level = case_when(
+      student_profile$peer_pressure <= 2 ~ "Low_PeerPress",
+      student_profile$peer_pressure <= 4 ~ "Medium_PeerPress",
+      TRUE ~ "High_PeerPress"
+    ),
+    
+    relationship_stress_level = case_when(
+      student_profile$relationship_stress <= 2 ~ "Low_RelStress",
+      student_profile$relationship_stress <= 4 ~ "Medium_RelStress",
+      TRUE ~ "High_RelStress"
+    ),
+    
+    stress_category = stress_category
+  )
+  
+  cat("Discretized student profile created for rule matching\n\n")
+  
+  # -----------------------------------
+  # STEP 3: MATCH RULES TO STUDENT PROFILE
+  # -----------------------------------
+  
+  cat("MATCHING ASSOCIATION RULES...\n")
+  cat("------------------------\n")
+  
+  # Add match score to each rule
+  stress_rules_df$match_score <- 0
+  stress_rules_df$matching_conditions <- ""
+  
+  for (i in 1:nrow(stress_rules_df)) {
+    rule_lhs <- stress_rules_df$rules[i]
+    
+    matches <- 0
+    total_conditions <- 0
+    matching_list <- c()
+    
+    # Check each discretized attribute
+    for (attr_name in names(student_discrete)) {
+      attr_value <- student_discrete[[attr_name]]
+      
+      # Create the pattern to search for (e.g., "age_group=18-20")
+      pattern <- paste0(attr_name, "=", attr_value)
+      
+      # Check if this pattern appears in the rule
+      if (grepl(pattern, rule_lhs, fixed = TRUE)) {
+        matches <- matches + 1
+        matching_list <- c(matching_list, pattern)
+      }
+      
+      # Count if this attribute appears at all in the rule
+      if (grepl(attr_name, rule_lhs)) {
+        total_conditions <- total_conditions + 1
+      }
+    }
+    
+    # Calculate match score
+    if (total_conditions > 0) {
+      stress_rules_df$match_score[i] <- matches / total_conditions
+      stress_rules_df$matching_conditions[i] <- paste(matching_list, collapse = ", ")
+    }
+  }
+  
+  # Filter for rules that match the student
+  matched_rules <- stress_rules_df %>%
+    filter(match_score > 0.5) %>%  # At least 50% of conditions match
+    arrange(desc(match_score), desc(lift), desc(confidence))
+  
+  cat("Found", nrow(matched_rules), "rules matching this student profile\n")
+  
+  # If no good matches, fall back to top rules by lift
+  if (nrow(matched_rules) < top_n) {
+    cat("⚠️  Limited matches - including high-lift rules as backup\n")
+    
+    backup_rules <- stress_rules_df %>%
+      filter(!rules %in% matched_rules$rules) %>%  # Don't duplicate
+      arrange(desc(lift)) %>%
+      head(top_n - nrow(matched_rules))
+    
+    matched_rules <- bind_rows(matched_rules, backup_rules)
+  }
+  
+  cat("\n")
+  
+  # -----------------------------------
+  # STEP 4: IDENTIFY STRESS DRIVERS
+  # -----------------------------------
+  
+  cat("PRIMARY STRESS DRIVERS:\n")
+cat("------------------------\n")
+
+# Create a comprehensive list of all potential stress factors with scores
+all_stress_factors <- data.frame(
+  factor_name = character(),
+  factor_value = numeric(),
+  severity = character(),
+  icon = character(),
+  description = character(),
+  stringsAsFactors = FALSE
+)
+
+# 1. Financial Stress
+if (!is.na(student_profile$financial_stress)) {
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Financial Stress",
+    factor_value = student_profile$financial_stress,
+    severity = case_when(
+      student_profile$financial_stress >= 4 ~ "HIGH",
+      student_profile$financial_stress >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      student_profile$financial_stress >= 4 ~ "🔴",
+      student_profile$financial_stress >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$financial_stress, "/5")
+  ))
+}
+
+# 2. Peer Pressure
+if (!is.na(student_profile$peer_pressure)) {
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Peer Pressure",
+    factor_value = student_profile$peer_pressure,
+    severity = case_when(
+      student_profile$peer_pressure >= 4 ~ "HIGH",
+      student_profile$peer_pressure >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      student_profile$peer_pressure >= 4 ~ "🔴",
+      student_profile$peer_pressure >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$peer_pressure, "/5")
+  ))
+}
+
+# 3. Relationship Stress
+if (!is.na(student_profile$relationship_stress)) {
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Relationship Stress",
+    factor_value = student_profile$relationship_stress,
+    severity = case_when(
+      student_profile$relationship_stress >= 4 ~ "HIGH",
+      student_profile$relationship_stress >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      student_profile$relationship_stress >= 4 ~ "🔴",
+      student_profile$relationship_stress >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$relationship_stress, "/5")
+  ))
+}
+
+# 4. Cognitive Distortions
+if (!is.na(student_profile$cognitive_distortions)) {
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Cognitive Distortions",
+    factor_value = student_profile$cognitive_distortions,
+    severity = case_when(
+      student_profile$cognitive_distortions >= 4 ~ "HIGH",
+      student_profile$cognitive_distortions >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      student_profile$cognitive_distortions >= 4 ~ "🔴",
+      student_profile$cognitive_distortions >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$cognitive_distortions, "/5")
+  ))
+}
+
+# 5. Sleep Duration (convert to stress scale: less sleep = higher stress)
+if (!is.na(student_profile$sleep_duration_hours_per_night)) {
+  sleep_stress_score <- case_when(
+    student_profile$sleep_duration_hours_per_night < 5 ~ 5,
+    student_profile$sleep_duration_hours_per_night < 6 ~ 4,
+    student_profile$sleep_duration_hours_per_night < 7 ~ 3,
+    student_profile$sleep_duration_hours_per_night < 8 ~ 2,
+    TRUE ~ 1
+  )
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Poor Sleep",
+    factor_value = sleep_stress_score,
+    severity = case_when(
+      sleep_stress_score >= 4 ~ "HIGH",
+      sleep_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      sleep_stress_score >= 4 ~ "🔴",
+      sleep_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$sleep_duration_hours_per_night, " hours/night")
+  ))
+}
+
+# 6. Family Support (inverse: low support = high stress)
+if (!is.na(student_profile$family_support)) {
+  family_stress_score <- 6 - student_profile$family_support  # Inverse scale
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Low Family Support",
+    factor_value = family_stress_score,
+    severity = case_when(
+      family_stress_score >= 4 ~ "HIGH",
+      family_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      family_stress_score >= 4 ~ "🔴",
+      family_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0("Support level: ", student_profile$family_support, "/5")
+  ))
+}
+
+# 7. Substance Use
+if (!is.na(student_profile$substance_use)) {
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Substance Use",
+    factor_value = student_profile$substance_use,
+    severity = case_when(
+      student_profile$substance_use >= 3 ~ "HIGH",
+      student_profile$substance_use >= 2 ~ "MODERATE",
+      student_profile$substance_use >= 1 ~ "LOW",
+      TRUE ~ "NONE"
+    ),
+    icon = case_when(
+      student_profile$substance_use >= 3 ~ "🔴",
+      student_profile$substance_use >= 2 ~ "🟡",
+      student_profile$substance_use >= 1 ~ "🟠",
+      TRUE ~ "🟢"
+    ),
+    description = paste0("Level: ", student_profile$substance_use, "/5")
+  ))
+}
+
+# 8. Academic Pressure (based on GPA - low GPA can indicate stress)
+if (!is.na(student_profile$academic_performance_gpa)) {
+  academic_stress_score <- case_when(
+    student_profile$academic_performance_gpa < 2.0 ~ 5,
+    student_profile$academic_performance_gpa < 2.5 ~ 4,
+    student_profile$academic_performance_gpa < 3.0 ~ 3,
+    student_profile$academic_performance_gpa < 3.5 ~ 2,
+    TRUE ~ 1
+  )
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Academic Pressure",
+    factor_value = academic_stress_score,
+    severity = case_when(
+      academic_stress_score >= 4 ~ "HIGH",
+      academic_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      academic_stress_score >= 4 ~ "🔴",
+      academic_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0("GPA: ", student_profile$academic_performance_gpa, "/4.0")
+  ))
+}
+
+# 9. High Study Hours (overwork indicator)
+if (!is.na(student_profile$study_hours_per_week)) {
+  study_stress_score <- case_when(
+    student_profile$study_hours_per_week >= 40 ~ 5,
+    student_profile$study_hours_per_week >= 30 ~ 4,
+    student_profile$study_hours_per_week >= 25 ~ 3,
+    student_profile$study_hours_per_week >= 20 ~ 2,
+    TRUE ~ 1
+  )
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "High Study Load",
+    factor_value = study_stress_score,
+    severity = case_when(
+      study_stress_score >= 4 ~ "HIGH",
+      study_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      study_stress_score >= 4 ~ "🔴",
+      study_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$study_hours_per_week, " hrs/week")
+  ))
+}
+
+# 10. Excessive Social Media Use
+if (!is.na(student_profile$social_media_usage_hours_per_day)) {
+  social_media_stress_score <- case_when(
+    student_profile$social_media_usage_hours_per_day >= 6 ~ 5,
+    student_profile$social_media_usage_hours_per_day >= 5 ~ 4,
+    student_profile$social_media_usage_hours_per_day >= 4 ~ 3,
+    student_profile$social_media_usage_hours_per_day >= 3 ~ 2,
+    TRUE ~ 1
+  )
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Excessive Social Media",
+    factor_value = social_media_stress_score,
+    severity = case_when(
+      social_media_stress_score >= 4 ~ "HIGH",
+      social_media_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      social_media_stress_score >= 4 ~ "🔴",
+      social_media_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$social_media_usage_hours_per_day, " hrs/day")
+  ))
+}
+
+# 11. Low Physical Exercise (lack of protective factor)
+if (!is.na(student_profile$physical_exercise_hours_per_week)) {
+  exercise_stress_score <- case_when(
+    student_profile$physical_exercise_hours_per_week < 1 ~ 5,
+    student_profile$physical_exercise_hours_per_week < 2 ~ 4,
+    student_profile$physical_exercise_hours_per_week < 3 ~ 3,
+    student_profile$physical_exercise_hours_per_week < 5 ~ 2,
+    TRUE ~ 1
+  )
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Sedentary Lifestyle",
+    factor_value = exercise_stress_score,
+    severity = case_when(
+      exercise_stress_score >= 4 ~ "HIGH",
+      exercise_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      exercise_stress_score >= 4 ~ "🔴",
+      exercise_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0(student_profile$physical_exercise_hours_per_week, " hrs/week exercise")
+  ))
+}
+
+# 12. Poor Diet Quality
+if (!is.na(student_profile$diet_quality)) {
+  diet_stress_score <- 6 - student_profile$diet_quality  # Inverse scale
+  
+  all_stress_factors <- rbind(all_stress_factors, data.frame(
+    factor_name = "Poor Diet",
+    factor_value = diet_stress_score,
+    severity = case_when(
+      diet_stress_score >= 4 ~ "HIGH",
+      diet_stress_score >= 3 ~ "MODERATE",
+      TRUE ~ "LOW"
+    ),
+    icon = case_when(
+      diet_stress_score >= 4 ~ "🔴",
+      diet_stress_score >= 3 ~ "🟡",
+      TRUE ~ "🟢"
+    ),
+    description = paste0("Diet quality: ", student_profile$diet_quality, "/5")
+  ))
+}
+
+# Sort by severity and value
+all_stress_factors <- all_stress_factors %>%
+  mutate(
+    severity_rank = case_when(
+      severity == "HIGH" ~ 3,
+      severity == "MODERATE" ~ 2,
+      severity == "LOW" ~ 1,
+      TRUE ~ 0
+    )
+  ) %>%
+  arrange(desc(severity_rank), desc(factor_value))
+
+# Get top 7-8 factors (only those with at least MODERATE severity)
+top_stress_factors <- all_stress_factors %>%
+  filter(severity_rank >= 2) %>%  # MODERATE or HIGH only
+  head(8)
+
+# If fewer than 8 HIGH/MODERATE factors, include some LOW factors
+if (nrow(top_stress_factors) < 8) {
+  remaining_factors <- all_stress_factors %>%
+    filter(severity_rank < 2) %>%
+    head(8 - nrow(top_stress_factors))
+  
+  top_stress_factors <- bind_rows(top_stress_factors, remaining_factors)
+}
+
+# Display results
+if (nrow(top_stress_factors) > 0) {
+  cat(sprintf("Identified %d stress factors (showing top %d):\n\n", 
+              nrow(all_stress_factors), 
+              min(8, nrow(top_stress_factors))))
+  
+  for (i in 1:nrow(top_stress_factors)) {
+    factor <- top_stress_factors[i, ]
+    
+    cat(sprintf("  %s %-25s [%-8s] %s\n",
+                factor$icon,
+                factor$factor_name,
+                factor$severity,
+                factor$description))
+  }
+  
+  # Summary by severity
+  cat("\n")
+  high_count <- sum(top_stress_factors$severity == "HIGH")
+  moderate_count <- sum(top_stress_factors$severity == "MODERATE")
+  low_count <- sum(top_stress_factors$severity == "LOW")
+  
+  cat(sprintf("  Summary: %d HIGH, %d MODERATE, %d LOW risk factors\n",
+              high_count, moderate_count, low_count))
+  
+} else {
+  cat("  ✅ No major stress drivers identified - you're managing well!\n")
+}
+
+cat("\n")
+
+# Store for return value
+stress_factors <- top_stress_factors
+  
+  # -----------------------------------
+  # STEP 5: GENERATE TOP N RECOMMENDATIONS
+  # -----------------------------------
+  
+  cat("========================================\n")
+  cat("RECOMMENDED COPING STRATEGIES\n")
+  cat("========================================\n\n")
+  
+  # Get unique mechanisms (in case multiple rules recommend same mechanism)
+  unique_recommendations <- matched_rules %>%
+    group_by(coping_mechanism) %>%
+    summarise(
+      best_lift = max(lift),
+      best_confidence = max(confidence),
+      best_match_score = max(match_score),
+      total_evidence = sum(count),
+      best_matching_conditions = first(matching_conditions[which.max(match_score)]),
+      .groups = 'drop'
+    ) %>%
+    mutate(
+      relevance_score = best_match_score * best_lift * best_confidence
+    ) %>%
+    arrange(desc(relevance_score)) %>%
+    head(top_n)
+  
+  recommendations <- list()
+  
+  for (i in 1:nrow(unique_recommendations)) {
+    rec <- unique_recommendations[i, ]
+    mechanism <- rec$coping_mechanism
+    
+    # Medal emoji
+    medal <- c("🥇", "🥈", "🥉")[i]
+    
+    cat(medal, "RECOMMENDATION", i, ":", mechanism, "\n")
+    cat(strrep("-", 60), "\n")
+    cat(sprintf("Confidence: %.0f%% | Effectiveness: %.1f× stronger | Match: %.0f%%\n",
+                rec$best_confidence * 100,
+                rec$best_lift,
+                rec$best_match_score * 100))
+    cat("\n")
+    
+    cat("Why this works for you:\n")
+    cat("  • Based on", rec$total_evidence, "students with similar profiles\n")
+    
+    if (nchar(rec$best_matching_conditions) > 0) {
+      cat("  • You match on:", rec$best_matching_conditions, "\n")
+    }
+    
+    cat("  • Evidence from association rule mining\n")
+    cat("\n")
+    
+    # Mechanism-specific guidance
+    cat("How to implement:\n")
+    
+    if (mechanism == "Talking to Friends") {
+      cat("  • Schedule 2-3 social activities per week\n")
+      cat("  • Reach out to close friends for stress check-ins\n")
+      cat("  • Join study groups for academic + social support\n")
+      
+    } else if (mechanism == "Exercise") {
+      cat("  • Start with 15-20 minutes of walking daily\n")
+      cat("  • Join campus fitness classes or sports clubs\n")
+      cat("  • Gradually increase intensity over 2-4 weeks\n")
+      cat("  ⚠️  Note: Benefits appear after 2-4 weeks of consistency\n")
+      
+    } else if (mechanism == "Walking or Nature Walks") {
+      cat("  • Take 20-30 minute walks in green spaces daily\n")
+      cat("  • Use walking as study breaks (every 50 minutes)\n")
+      cat("  • Explore campus nature trails or nearby parks\n")
+      
+    } else if (mechanism == "Watching Sports") {
+      cat("  • Watch favorite sports with friends (social + relaxation)\n")
+      cat("  • Schedule viewing as reward after study sessions\n")
+      cat("  • Join sports fan clubs on campus\n")
+      
+    } else if (mechanism == "Spending Time Alone") {
+      cat("  • Schedule 30-60 minutes of quiet time daily\n")
+      cat("  • Create a calm personal space for recharging\n")
+      cat("  • Balance alone time with social activities\n")
+      cat("  ⚠️  Note: Monitor for isolation - maintain some social contact\n")
+      
+    } else if (mechanism == "Reading") {
+      cat("  • Set aside 30 min daily for leisure reading\n")
+      cat("  • Choose engaging, positive content\n")
+      cat("  • Join book clubs for social + reading benefits\n")
+      
+    } else if (mechanism == "Meditation") {
+      cat("  • Start with 5-10 min guided meditation daily\n")
+      cat("  • Use apps like Headspace, Calm, or Insight Timer\n")
+      cat("  • Join campus meditation groups\n")
+      
+    } else if (mechanism == "Yoga") {
+      cat("  • Attend beginner yoga classes on campus\n")
+      cat("  • Practice 20-30 min, 3× per week minimum\n")
+      cat("  • Combine physical + mental stress relief\n")
+      
+    } else if (mechanism == "Travelling") {
+      cat("  • Plan weekend getaways or day trips\n")
+      cat("  • Explore nearby nature spots or attractions\n")
+      cat("  • Budget-friendly: hiking, camping, road trips\n")
+      
+    } else if (mechanism == "Social Media Engagement") {
+      cat("  • Use for positive connections (not passive scrolling)\n")
+      cat("  • Join supportive online communities\n")
+      cat("  • Limit to 2-3 hours daily\n")
+    }
+    
+    cat("\n\n")
+    
+    recommendations[[i]] <- list(
+      rank = i,
+      mechanism = mechanism,
+      confidence = rec$best_confidence,
+      lift = rec$best_lift,
+      match_score = rec$best_match_score,
+      evidence_count = rec$total_evidence,
+      matching_conditions = rec$best_matching_conditions
+    )
+  }
+  
+  # -----------------------------------
+  # STEP 6: ADDITIONAL SUPPORT
+  # -----------------------------------
+  
+  if (predicted_stress >= 7) {
+    cat("========================================\n")
+    cat("⚠️  HIGH STRESS ALERT\n")
+    cat("========================================\n\n")
+    cat("Your predicted stress level is HIGH. Please consider:\n")
+    cat("  • Speaking with a campus counselor\n")
+    cat("  • Attending mental health workshops\n")
+    cat("  • Using crisis helplines if needed\n\n")
+  }
+  
+  # Return results
+  return(list(
+    predicted_stress = predicted_stress,
+    stress_category = stress_category,
+    stress_drivers = stress_factors,
+    matched_rules_count = sum(matched_rules$match_score > 0.5),
+    recommendations = recommendations
+  ))
+}
+
+# ==========================================
+# TEST THE CORRECTED FUNCTION
+# ==========================================
+# Example 1: Create a sample student profile
+sample_student_1 <- data.frame(
+  student_id = "TEST001",
+  age = 21,
+  gender = "Female",
+  academic_performance_gpa = 2.5,
+  study_hours_per_week = 15,
+  social_media_usage_hours_per_day = 5,
+  sleep_duration_hours_per_night = 5.5,
+  physical_exercise_hours_per_week = 2,
+  family_support = 2,
+  financial_stress = 4,
+  peer_pressure = 4,
+  relationship_stress = 3,
+  diet_quality = 3,
+  cognitive_distortions = 4,
+  substance_use = 1,
+  counseling_attendance = "No",
+  family_mental_health_history = "No",
+  medical_condition = "No",
+  stress_coping_mechanisms = "Reading"  # Current mechanism (not used in prediction)
+) 
+
+
+
+result_corrected <- recommend_coping_strategies_CORRECTED(
+  student_profile = sample_student_1,
+  stress_rules_df = stress_rules_df,  
+  model_step = model_step,
+  top_n = 3
+)
+
+
+
+```
+
+
+
+
+```{r}
+validate_recommendation_system <- function(test_data, 
+                                          association_rules_df,
+                                          regression_model) {
+  #' Validate the recommendation system
+  #' 
+  #' @param test_data: test dataset
+  #' @param association_rules_df: association rules
+  #' @param regression_model: trained model
+  #' 
+  #' @return: validation metrics
+  
+  cat("\n========================================\n")
+  cat("RECOMMENDATION SYSTEM VALIDATION\n")
+  cat("========================================\n\n")
+  
+  # 1. Prediction accuracy
+  predictions <- predict(regression_model, newdata = test_data)
+  rmse <- sqrt(mean((test_data$mental_stress_level - predictions)^2, na.rm = TRUE))
+  mae <- mean(abs(test_data$mental_stress_level - predictions), na.rm = TRUE)
+  
+  cat("STRESS PREDICTION ACCURACY:\n")
+  cat("  RMSE:", round(rmse, 3), "\n")
+  cat("  MAE:", round(mae, 3), "\n")
+  cat("  Average error:", round(mae, 2), "points on 1-10 scale\n\n")
+  
+  # 2. Classification accuracy (stress categories)
+  test_data$predicted_stress <- predictions
+  test_data$predicted_category <- case_when(
+    predictions <= 3 ~ "Low",
+    predictions <= 6 ~ "Medium",
+    predictions <= 10 ~ "High"
+  )
+  
+  confusion_matrix <- table(Actual = test_data$stress_category, 
+                            Predicted = test_data$predicted_category)
+  
+  cat("STRESS CATEGORY CLASSIFICATION:\n")
+  print(confusion_matrix)
+  
+  accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+  cat("\nOverall Accuracy:", round(accuracy * 100, 1), "%\n\n")
+  
+  # 3. Check if recommended coping mechanisms align with effective ones
+  cat("RECOMMENDATION QUALITY ASSESSMENT:\n")
+  
+  # Get top recommended mechanisms from rules
+  top_mechanisms <- association_rules_df %>%
+    arrange(desc(lift)) %>%
+    head(10) %>%
+    pull(coping_mechanism) %>%
+    unique()
+  
+  cat("Top recommended mechanisms (by lift):\n")
+  for (i in seq_along(top_mechanisms)) {
+    cat("  ", i, ".", top_mechanisms[i], "\n")
+  }
+  
+  # 4. Coverage - how many students can we provide recommendations for?
+  cat("\nSYSTEM COVERAGE:\n")
+  cat("  Total association rules:", nrow(association_rules_df), "\n")
+  cat("  Rules with lift > 5:", sum(association_rules_df$lift > 5), "\n")
+  cat("  Rules with confidence > 0.8:", sum(association_rules_df$confidence > 0.8), "\n")
+  
+  # 5. Recommendation diversity
+  all_mechanisms <- association_rules_df$coping_mechanism %>% unique()
+  cat("\nRECOMMENDATION DIVERSITY:\n")
+  cat("  Unique coping mechanisms recommended:", length(all_mechanisms), "\n")
+  cat("  Mechanisms:", paste(all_mechanisms, collapse = ", "), "\n\n")
+  
+  return(list(
+    rmse = rmse,
+    mae = mae,
+    accuracy = accuracy,
+    confusion_matrix = confusion_matrix,
+    top_mechanisms = top_mechanisms
+  ))
+}
+
+# Run validation
+validation_results <- validate_recommendation_system(
+  test_data = test_data,
+  association_rules_df = stress_rules_df,
+  regression_model = model_step
+)
+
+# ==========================================
+# STEP 5.13: CROSS-VALIDATION
+# ==========================================
+
+cat("\n========================================\n")
+cat("CROSS-VALIDATION ANALYSIS\n")
+cat("========================================\n\n")
+
+# Perform k-fold cross-validation
+library(caret)
+
+# Set up 10-fold cross-validation
+train_control <- trainControl(method = "cv", number = 10)
+
+# Train model with cross-validation
+cv_model <- train(mental_stress_level ~ 
+                    age + gender + academic_performance_gpa + 
+                    study_hours_per_week + social_media_usage_hours_per_day +
+                    sleep_duration_hours_per_night + physical_exercise_hours_per_week +
+                    family_support + financial_stress + peer_pressure +
+                    relationship_stress + diet_quality + cognitive_distortions +
+                    substance_use + counseling_attendance + 
+                    family_mental_health_history + medical_condition +
+                    stress_coping_mechanisms,
+                  data = stress_survey_data,
+                  method = "lm",
+                  trControl = train_control)
+
+cat("10-Fold Cross-Validation Results:\n")
+print(cv_model)
+
+cat("\nCross-Validation RMSE:", round(cv_model$results$RMSE, 3), "\n")
+cat("Cross-Validation R²:", round(cv_model$results$Rsquared, 3), "\n")
+```

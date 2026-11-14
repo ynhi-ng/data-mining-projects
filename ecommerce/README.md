@@ -7,15 +7,28 @@ transaction log, then builds customer segmentation (K-means on RFM-style
 features) and a product recommender (TF-IDF + cosine similarity on product
 descriptions). Findings are published as a static, interactive report.
 
-## Tools Used
-- Python: pandas, numpy, scikit-learn (KMeans, TF-IDF, cosine similarity), seaborn, matplotlib
-- HTML, CSS, JavaScript, Chart.js - for the interactive report
+## Data & methodology
+- Clean UCI Online Retail transaction log
+- K-means on RFM-style customer features
+- TF-IDF + cosine similarity recommender on product descriptions
+- Export aggregates to `data.js` for the Chart.js report
+
+## Limits & next steps
+- Single retailer / one-year window; segments may not generalize
+- Static report is portfolio-ready; live personalization not in scope
+
+## Tools
+- Python: pandas, numpy, scikit-learn, seaborn, matplotlib
+- HTML, CSS, JavaScript, Chart.js
+
+## Status
+Complete
 
 ## Files
-- `ecommerce_eda.ipynb` — data cleaning, EDA, customer segmentation, and product recommender
-- `data.js` — aggregated results exported from the notebook, powers the report's charts
-- `index.html`, `style.css`, `script.js` — static interactive report ("The Sales Report")
-- `e-commerce_data.csv` — raw transaction data (not tracked in git; see `.gitignore`)
+- `ecommerce_eda.ipynb` — cleaning, EDA, segmentation, recommender
+- `data.js` — chart data for the report
+- `index.html`, `style.css`, `script.js` — interactive report
+- `e-commerce_data.csv` — raw data (not tracked; see `.gitignore`)
 
 ## Data Sources
 - Chen, D. (2015). Online Retail [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5BW33.
